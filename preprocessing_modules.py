@@ -124,6 +124,50 @@ def add_datetime_epoch_seconds(df: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
+def add_caller_ip_first_octet(df: pd.DataFrame) -> pd.DataFrame:
+    out = df.copy()
+    if CALLER_IP_COL not in out.columns:
+        return out
+    name = "callerIp_first_octet"
+    if name in out.columns:
+        return out
+
+    def octet(v):
+        if v is None or (isinstance(v, float) and np.isnan(v)):
+            return np.nan
+        try:
+            return int(str(v).strip().split(".")[0])
+        except (ValueError, IndexError, TypeError):
+            return np.nan
+
+    out[name] = out[CALLER_IP_COL].map(octet)
+    if out[name].notna().any():
+        med = out[name].median()
+        if pd.notna(med):
+            out[name] = out[name].fillna(int(round(float(med))))
+    return out
+
+
+def add_anonymous_principal_flag(df: pd.DataFrame) -> pd.DataFrame:
+    out = df.copy()
+    if PRINCIPAL_EMAIL_COL not in out.columns:
+        return out
+    s = out[PRINCIPAL_EMAIL_COL].astype(str)
+    out["anonymous_principal"] = (
+        s.str.contains("system:anonymous", case=False, regex=False, na=False).astype(np.int8)
+    )
+    return out
+
+
+def add_caller_ip_first_octet(df: pd.DataFrame) -> pd.DataFrame:
+    out = df.copy()
+    if CALLER_IP_COL not in out.columns:
+        return out
+    name = "callerIp_first_octet"
+    if name in out.columns:
+        return out
+
+
 def add_selective_label_encoding(
     df: pd.DataFrame,
     min_unique: int = 2,
