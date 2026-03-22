@@ -38,15 +38,19 @@ Qëllimi kryesor i Fazës I është:
 
 ## 2. Dataset-i
 Dataset-i përmban **audit logs** / ngjarje të regjistruara nga sistemet cloud / Kubernetes, me informacione si:
-- timestamp-e,
-- principal email / user information,
-- service name,
-- method name,
-- resource name,
-- caller IP,
-- authorization decision,
-- status code,
-- labels dhe metadata të tjera.
+- `timestamp` (koha e aktivitetit / eventit),
+- `principalEmail` (email-i i përdoruesit),
+- `serviceName` (emri i servisit ku është kryer aktiviteti, në këtë rast: Kubernetes - k8s.io),
+- `methodName` (aktiviteti apo aksioni i kryer),
+- `resourceName` (emri i resursit të afektuar),
+- `project_id` (ID e projektit),
+- `callerSuppliedUserAgent` (shembull: shfletuesi ~ browser i përdorur ose CLI, përmes të cilit është kryer aktiviteti),
+- `callerIp` (IP e përdoruesit),
+- `permission` (privilegji i përdorur gjatë aktivitetit),
+- `authorization.k8s.io/decision` (vendimi i autorizimit apo mosautorizimit),
+- `authorization.k8s.io/reason` (arsyeja),
+- `status.code/message` (kodi dhe mesazhi i statusit, nëse është kryer aktiviteti me sukses ose ka dështuar për ndonjë arsye),
+- `labels` dhe `metadata` të tjera.
 
 Këto të dhëna janë heterogjene dhe përmbajnë:
 - kolona kategorike,
@@ -176,7 +180,7 @@ Ky hap ndihmon për të kuptuar dataset-in më mirë pa hyrë ende në modelim.
 
 ---
 
-### Sampling
+## 4. Sampling
 Nuk u përfshi sepse dataset-i ka madhësi të menaxhueshme dhe nuk ka nevojë për reduktim artificial.
 
 
