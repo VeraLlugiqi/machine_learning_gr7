@@ -45,8 +45,16 @@ class DataCleaner:
         return self
 
     
-    
+    def feature_selection(self):
         cols_to_drop = []
+
+        manual_drop = [
+            "insertId",
+            "operation.id",
+            "operation.producer",
+            "operation.first",
+            "operation.last"
+        ]
 
         for col in self.df.columns:
             if col == "labels.authorization.k8s.io/decision":
@@ -55,14 +63,16 @@ class DataCleaner:
             if self.df[col].nunique(dropna=False) <= 1:
                 cols_to_drop.append(col)
 
-            elif self.df[col].nunique(dropna=False) / len(self.df) > 0.9:
+            elif col in manual_drop:
                 cols_to_drop.append(col)
+
+        cols_to_drop = list(set(cols_to_drop))
 
         if cols_to_drop:
             print(f"Dropping {len(cols_to_drop)} low-value columns: {cols_to_drop}")
             self.df.drop(columns=cols_to_drop, inplace=True)
 
-        return self
+        return self  
 
 
 def drop_columns_over_missing_fraction(

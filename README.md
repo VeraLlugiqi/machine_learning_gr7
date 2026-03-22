@@ -1,8 +1,11 @@
-# [Titulli i projektit – zëvendësojeni]
+# Analizimi i Audit Logs (Regjistra të Aktiviteteve) nga Kubernetes Service në Google Cloud Platform
 
 **Universiteti:** Universiteti i Prishtines
+
 **Fakulteti:** Fakulteti i Inxhinierise Elektrike dhe Kompjuterike
+
 **Niveli i studimeve:** Master 
+
 **Lënda:** Machine Learning  
 **Mësimdhënësit:** Lule Ahmedi, Mërgim Hoti 
 
@@ -15,9 +18,9 @@ Art Ukshini, Leotrim Halimi, Vera Llugiqi
 # Përgatitja e të Dhënave për Machine Learning – Faza I
 
 ## 1. Përshkrimi i projektit
-Ky projekt paraqet **fazën e parë** të punës: **parapërpunimin e dataset-it** me qëllim që të dhënat të bëhen të pastra, të strukturuara dhe të gatshme për fazën e dytë, ku do të zhvillohet modeli i machine learning.
+Ky projekt paraqet fazën e parë të punës: parapërpunimin e dataset-it me qëllim që të dhënat të bëhen të pastra, të strukturuara dhe të gatshme për fazën e dytë, ku do të zhvillohet modeli i machine learning.
 
-Pra, në këtë fazë **nuk ndërtohet ende modeli**, por përgatitet dataset-i në mënyrë që në vazhdim:
+Pra, në këtë fazë nuk ndërtohet ende modeli, por përgatitet dataset-i në mënyrë që në vazhdim:
 - të zgjidhet target-i,
 - të bëhet train/test split,
 - të trajnohen modelet,

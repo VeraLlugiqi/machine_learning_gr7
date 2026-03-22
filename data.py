@@ -24,6 +24,7 @@ def preprocess(input_csv: str, output_csv: str, missing_threshold: float = 0.7) 
     cleaner.normalize_string_columns()
     cleaner.clean_boolean_columns()
     cleaner.remove_duplicates()
+    cleaner.feature_selection()
     
     df = cleaner.df
 
