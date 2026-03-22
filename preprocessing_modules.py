@@ -109,17 +109,6 @@ def impute_values(df: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
-def add_anonymous_principal_flag(df: pd.DataFrame) -> pd.DataFrame:
-    out = df.copy()
-    if PRINCIPAL_EMAIL_COL not in out.columns:
-        return out
-    s = out[PRINCIPAL_EMAIL_COL].astype(str)
-    out["anonymous_principal"] = (
-        s.str.contains("system:anonymous", case=False, regex=False, na=False).astype(np.int8)
-    )
-    return out
-
-
 def add_datetime_epoch_seconds(df: pd.DataFrame) -> pd.DataFrame:
     out = df.copy()
     epoch = pd.Timestamp("1970-01-01", tz="UTC")
@@ -132,30 +121,6 @@ def add_datetime_epoch_seconds(df: pd.DataFrame) -> pd.DataFrame:
         s = pd.to_datetime(out[col], utc=True, errors="coerce")
         delta = s - epoch
         out[new_name] = delta.dt.total_seconds()
-    return out
-
-
-def add_caller_ip_first_octet(df: pd.DataFrame) -> pd.DataFrame:
-    out = df.copy()
-    if CALLER_IP_COL not in out.columns:
-        return out
-    name = "callerIp_first_octet"
-    if name in out.columns:
-        return out
-
-    def octet(v):
-        if v is None or (isinstance(v, float) and np.isnan(v)):
-            return np.nan
-        try:
-            return int(str(v).strip().split(".")[0])
-        except (ValueError, IndexError, TypeError):
-            return np.nan
-
-    out[name] = out[CALLER_IP_COL].map(octet)
-    if out[name].notna().any():
-        med = out[name].median()
-        if pd.notna(med):
-            out[name] = out[name].fillna(int(round(float(med))))
     return out
 
 
