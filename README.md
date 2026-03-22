@@ -7,6 +7,7 @@
 **Niveli i studimeve:** Master 
 
 **Lënda:** Machine Learning  
+
 **Mësimdhënësit:** Lule Ahmedi, Mërgim Hoti 
 
 **Studentët që kanë kontribuar:**  
@@ -61,6 +62,9 @@ Këto të dhëna janë heterogjene dhe përmbajnë:
 
 Për këtë arsye, parapërpunimi është i domosdoshëm para kalimit në machine learning.
 
+Numri i objekteve: 10000
+Numri i atributeve: 35
+
 ---
 
 ## 3. Hapat e parapërpunimit
@@ -70,6 +74,8 @@ Në fillim bëhet identifikimi i tipeve të kolonave:
 - numerike,
 - kategorike,
 - datetime.
+
+### 🔹 Tipet e të dhënave
 
 Ky hap është i rëndësishëm sepse përcakton mënyrën se si do të trajtohet secila kolonë në vazhdim.
 
@@ -217,16 +223,6 @@ Ky dataset:
 - dhe është i gatshëm për Fazën II të machine learning.
 
 ---
-## 7.
-Pas përfundimit të parapërpunimit, dataset-i final ml_ready.csv verifikohet për të siguruar që është i gatshëm për fazën e machine learning.
-```python
-
-import pandas as pd
-
-df = pd.read_csv("processedfiles/ml_ready.csv")
-
-df.head(20)
-```
 
 ## 8. Struktura e projektit
 
@@ -241,6 +237,22 @@ df.head(20)
 ├── requirements.txt
 ```
 
+Shikimi i datasetit perfundimtar:
+```python
+
+timestamp	logName	receiveTimestamp	labels.authorization.k8s.io/decision	resource.labels.project_id	resource.labels.location	resource.labels.cluster_name	protoPayload.authenticationInfo.principalEmail	protoPayload.authorizationInfo	protoPayload.methodName	protoPayload.requestMetadata.callerIp	protoPayload.requestMetadata.callerSuppliedUserAgent	protoPayload.resourceName	protoPayload.status.code	protoPayload.status.message	anonymous_principal	timestamp__epoch_s	receiveTimestamp__epoch_s	callerIp_first_octet	logName__le	labels.authorization.k8s.io/decision__le	resource.labels.project_id__le	resource.labels.location__le	resource.labels.cluster_name__le	protoPayload.methodName__le	protoPayload.requestMetadata.callerSuppliedUserAgent__le
+2024-11-03 16:38:07+00:00	projects/project123/logs/cloudaudit.googleapis.com%2Factivity	2024-11-03 16:38:58+00:00	forbid	project123	europe-west1	prod-cluster	admin@company.com	[{'resource': 'apis/networking.k8s.io/v1/networkpolicies', 'permission': 'io.k8s.patch'}]	io.k8s.patch	198.18.9.235	kubectl/v1.26.0 (darwin/amd64) kubernetes/b46c28f	apis/networking.k8s.io/v1/networkpolicies	0	OK	0	1730651887	1730651938	198	3	1	3	1	4	12	7
+2024-07-06 11:59:19+00:00	projects/project123/logs/cloudaudit.googleapis.com%2Factivity	2024-07-06 12:01:26+00:00	forbid	project123	us-central1	dev-cluster	dev@company.com	[{'resource': 'apis/v1/services', 'permission': 'io.k8s.get'}]	io.k8s.get	198.19.90.169	kubectl/v1.25.0 (linux/amd64) kubernetes/a866cbe	apis/v1/services	7	forbidden: User "dev@company.com" cannot get path "apis/v1/services"	0	1720267159	1720267286	198	3	1	3	3	0	9	6
+2024-03-06 04:05:32+00:00	projects/project123/logs/cloudaudit.googleapis.com%2Factivity	2024-03-06 04:09:49+00:00	forbid	project123	us-west1	nf-default	system:anonymous	[{'resource': 'apis/networking.k8s.io/v1/networkpolicies', 'permission': 'io.k8s.delete'}]	io.k8s.delete	198.18.39.24	kubectl/v1.25.0 (linux/amd64) kubernetes/a866cbe	apis/networking.k8s.io/v1/networkpolicies	0	OK	1	1709697932	1709698189	198	3	1	3	5	2	8	6
+2024-12-17 15:24:51+00:00	projects/project123/logs/cloudaudit.googleapis.com%2Factivity	2024-12-17 15:24:56+00:00	forbid	project123	europe-west1	nf-default	system:anonymous	[{'resource': 'apis/rbac.authorization.k8s.io/v1/roles', 'permission': 'io.k8s.put'}]	io.k8s.put	198.19.109.172	Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36	apis/rbac.authorization.k8s.io/v1/roles	3	Invalid argument	1	1734449091	1734449096	198	3	1	3	1	2	14	1
+2024-09-17 06:09:24+00:00	projects/project123/logs/cloudaudit.googleapis.com%2Factivity	2024-09-17 06:10:40+00:00	forbid	project123	europe-west1	nf-default	dev@company.com	[{'resource': 'global-protect/login.esp', 'permission': 'io.k8s.put'}]	io.k8s.put	198.18.83.217	kubectl/v1.25.0 (linux/amd64) kubernetes/a866cbe	global-protect/login.esp	3	Invalid argument	0	1726553364	1726553440	198	3	1	3	1	2	14	6
+2024-12-06 01:12:01+00:00	projects/project123/logs/cloudaudit.googleapis.com%2Factivity	2024-12-06 01:13:27+00:00	allow	project123	asia-southeast1	nf-default	system:anonymous	[{'resource': 'apis/batch/v1/jobs', 'permission': 'io.k8s.get'}]	io.k8s.get	198.18.79.228	Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36	apis/batch/v1/jobs	7	forbidden: User "system:anonymous" cannot get path "apis/batch/v1/jobs"	1	1733447521	1733447607	198	3	0	3	0	2	9	2
+2024-07-20 10:16:34+00:00	projects/project123/logs/cloudaudit.googleapis.com%2Factivity	2024-07-20 10:17:14+00:00	allow	project123	europe-west1	dev-cluster	service-account@company.iam.gserviceaccount.com	[{'resource': 'apis/v1/services', 'permission': 'io.k8s.delete'}]	io.k8s.delete	198.19.148.36	kubectl/v1.26.0 (darwin/amd64) kubernetes/b46c28f	apis/v1/services	13	Internal error	0	1721470594	1721470634	198	3	0	3	1	0	8	7
+2024-07-25 20:21:32+00:00	projects/project123/logs/cloudaudit.googleapis.com%2Factivity	2024-07-25 20:22:21+00:00	forbid	project123	asia-southeast1	prod-cluster	dev@company.com	[{'resource': 'apis/apps/v1/deployments', 'permission': 'io.k8s.post'}]	io.k8s.post	198.18.224.49	kubectl/v1.25.0 (linux/amd64) kubernetes/a866cbe	apis/apps/v1/deployments	13	Internal error	0	1721938892	1721938941	198	3	1	3	0	4	13	6
+2024-12-25 21:45:28+00:00	projects/project123/logs/cloudaudit.googleapis.com%2Factivity	2024-12-25 21:48:03+00:00	forbid	project123	asia-southeast1	test-cluster	admin@company.com	[{'resource': 'apis/v1/services', 'permission': 'io.k8s.delete'}]	io.k8s.delete	198.19.199.232	Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36 Edg/115.0.1901.203	apis/v1/services	3	Invalid argument	0	1735163128	1735163283	198	3	1	3	0	6	8	3
+<img width="32766" height="291" alt="image" src="https://github.com/user-attachments/assets/ea2d573d-f56c-4996-b08a-0616d7f11906" />
+
+```
 ---
 
 ## 9. Teknologjitë e përdorura
