@@ -1,0 +1,69 @@
+[labels.authorization.k8s.io/decision__le]
+-1	__MISSING__
+0	allow
+1	forbid
+
+[logName__le]
+-1	__MISSING__
+0	projects/project-finops/logs/cloudaudit.googleapis.com%2Factivity
+1	projects/project-ml/logs/cloudaudit.googleapis.com%2Factivity
+2	projects/project-observability/logs/cloudaudit.googleapis.com%2Factivity
+3	projects/project123/logs/cloudaudit.googleapis.com%2Factivity
+
+[protoPayload.methodName__le]
+-1	__MISSING__
+0	io.k8s.apps.v1.deployments.update
+1	io.k8s.authorization.rbac.v1.clusterrolebindings.create
+2	io.k8s.authorization.rbac.v1.rolebindings.create
+3	io.k8s.authorization.rbac.v1.roles.create
+4	io.k8s.batch.v1.jobs.create
+5	io.k8s.core.v1.configmaps.create
+6	io.k8s.core.v1.endpoints.update
+7	io.k8s.core.v1.secrets.create
+8	io.k8s.delete
+9	io.k8s.get
+10	io.k8s.networking.gateway.v1.httproutes.create
+11	io.k8s.networking.k8s.io.v1.ingresses.create
+12	io.k8s.patch
+13	io.k8s.post
+14	io.k8s.put
+15	io.k8s.storage.k8s.io.v1.storageclasses.create
+
+[protoPayload.requestMetadata.callerSuppliedUserAgent__le]
+-1	__MISSING__
+0	Google-Cloud-SDK gcloud/471.0.0 command/gcloud.container.clusters.get-credentials
+1	Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36
+2	Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36
+3	Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36 Edg/115.0.1901.203
+4	Terraform/1.8.2 (+https://www.terraform.io) terraform-provider-kubernetes/2.31.0
+5	kube-apiserver/v1.35.0 (linux/amd64) kubernetes/4363d1d
+6	kubectl/v1.25.0 (linux/amd64) kubernetes/a866cbe
+7	kubectl/v1.26.0 (darwin/amd64) kubernetes/b46c28f
+8	kubectl/v1.28.5 (darwin/arm64) kubernetes/efgh456
+9	kubectl/v1.29.2 (linux/amd64) kubernetes/abcd123
+
+[resource.labels.cluster_name__le]
+-1	__MISSING__
+0	dev-cluster
+1	gke-core
+2	nf-default
+3	payments-cluster
+4	prod-cluster
+5	staging-cluster
+6	test-cluster
+
+[resource.labels.location__le]
+-1	__MISSING__
+0	asia-southeast1
+1	europe-west1
+2	europe-west4
+3	us-central1
+4	us-east1
+5	us-west1
+
+[resource.labels.project_id__le]
+-1	__MISSING__
+0	project-finops
+1	project-ml
+2	project-observability
+3	project123

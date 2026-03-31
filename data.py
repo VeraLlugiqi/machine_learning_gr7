@@ -6,11 +6,13 @@ import pandas as pd
 from preprocessing_modules import (
     DataCleaner,
     add_anonymous_principal_flag,
-    add_caller_ip_first_octet,
     add_datetime_epoch_seconds,
+    add_time_features_and_finalize_numeric,
     add_selective_label_encoding,
     drop_columns_over_missing_fraction,
     impute_values,
+    remove_outliers_iqr,
+    save_label_mappings_txt,
     save_ml_csv,
 )
 
@@ -30,11 +32,17 @@ def preprocess(input_csv: str, output_csv: str, missing_threshold: float = 0.7) 
 
     df, _ = drop_columns_over_missing_fraction(df, missing_threshold=missing_threshold)
     df = impute_values(df)
+    df, outlier_report = remove_outliers_iqr(df)
     df = add_anonymous_principal_flag(df)
     df = add_datetime_epoch_seconds(df)
-    df = add_caller_ip_first_octet(df)
-    df = add_selective_label_encoding(df)
+    df, mappings = add_selective_label_encoding(df)
+    df, final_drop_report = add_time_features_and_finalize_numeric(df)
     save_ml_csv(df, output_csv)
+    mapping_path = os.path.join(os.path.dirname(output_csv), "label_mappings.txt")
+    save_label_mappings_txt(mappings, mapping_path)
+    print("Outlier report:", outlier_report)
+    print("Final numeric drop report:", final_drop_report)
+    print("Label mappings:", mapping_path)
     return output_csv
 
 

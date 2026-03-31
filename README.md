@@ -86,6 +86,12 @@ Kolonat që kanë emra si:
 
 trajtohen si kandidatë për datetime.
 
+Kodi:
+```python
+cleaner = DataCleaner(df)
+cleaner.fix_datetime_columns()
+```
+
 ---
 
 ### 3.2 Analiza e cilësisë së të dhënave
@@ -97,6 +103,13 @@ Para transformimeve kontrollohen:
 - shpërndarja bazike e kolonave.
 
 Ky hap ndihmon për të kuptuar sa i pastër është dataset-i dhe çfarë problemesh duhet të rregullohen.
+
+Kodi:
+```python
+df.shape
+df.isna().mean().sort_values(ascending=False).head(10)
+df.duplicated().sum()
+```
 
 ---
 
@@ -110,6 +123,16 @@ Gjatë pastrimit bëhen këto veprime:
 - standardizohet forma e disa vlerave tekstuale.
 
 Ky hap e bën dataset-in më të qëndrueshëm dhe më të lehtë për përpunim të mëtejshëm.
+
+Kodi:
+```python
+cleaner.remove_empty_rows_cols()
+cleaner.normalize_string_columns()
+cleaner.clean_boolean_columns()
+cleaner.remove_duplicates()
+cleaner.feature_selection()
+df = cleaner.df
+```
 
 ---
 
@@ -134,15 +157,27 @@ Për kolonat e mbetura përdoren këto rregulla:
 
 Kjo strategji ruan sa më shumë të dhëna dhe shmang humbjen e tepërt të rreshtave.
 
+Kodi:
+```python
+df, dropped_missing = drop_columns_over_missing_fraction(df, missing_threshold=0.7)
+df = impute_values(df)
+```
+
+### 3.5 Zbulimi dhe largimi i outlier-ëve (IQR)
+Për kolonat numerike përdoret rregulli IQR për të detektuar rreshtat outlier dhe për t'i larguar nga dataset-i.
+
+Kodi:
+```python
+df, outlier_report = remove_outliers_iqr(df, factor=1.5)
+print("Outlier report:", outlier_report)
+```
+
 ---
 
-### 3.5 Inxhinieria e veçorive (Feature Engineering)
+### 3.6 Inxhinieria e veçorive (Feature Engineering)
 Për ta bërë dataset-in më të dobishëm për machine learning, krijohen disa kolona të reja nga kolonat ekzistuese.
 
-Nga kolonat datetime nxirren:
-- **hour**,
-- **dayofweek**,
-- **is_weekend**.
+Nga kolonat datetime krijohen kolona numerike me sekonda nga epoka (`epoch seconds`).
 
 Gjithashtu krijohet një kolonë si:
 - **anonymous_principal**  
@@ -150,9 +185,15 @@ që tregon nëse mungon informacioni për përdoruesin / principal-in.
 
 Këto veçori të reja ndihmojnë modelin në fazën e ardhshme të kapë modele më kuptimplota në të dhëna.
 
+Kodi:
+```python
+df = add_anonymous_principal_flag(df)
+df = add_datetime_epoch_seconds(df)
+```
+
 ---
 
-### 3.6 Heqja e kolonave jo të dobishme
+### 3.7 Heqja e kolonave jo të dobishme
 Hiqen kolonat që nuk janë të përshtatshme për machine learning, si:
 
 - kolona me shumë missing values,
@@ -162,10 +203,25 @@ Hiqen kolonat që nuk janë të përshtatshme për machine learning, si:
 
 Kjo ul zhurmën dhe e bën dataset-in më të fokusuar.
 
+Kodi:
+```python
+cleaner.feature_selection()
+df, dropped_missing = drop_columns_over_missing_fraction(df, missing_threshold=0.7)
+```
+
 ---
 
+### 3.8 Label Encoding + mapping file
+Kolonat kategorike të përshtatshme enkodohen në forma numerike (`__le`) për machine learning.
+Ruhet edhe një file tekstual që tregon cilat numra korrespondojnë me cilat label-a.
 
-### 3.7 Analiza e target-it dhe imbalance
+Kodi:
+```python
+df, mappings = add_selective_label_encoding(df)
+save_label_mappings_txt(mappings, "processedfiles/label_mappings.txt")
+```
+
+### 3.9 Analiza e target-it dhe imbalance
 Edhe pse trajnimi i modelit nuk bëhet ende në këtë fazë, eshte kontrollohuar një target i mundshëm për Fazën II.
 
 Një kandidat shumë i mirë për target është:
@@ -213,11 +269,13 @@ Në fund gjenerohet një dataset i pastruar dhe i përgatitur:
 
 ```text
 processedfiles/ml_ready.csv
+processedfiles/label_mappings.txt
 ```
 
 Ky dataset:
 - është i pastruar,
 - ka missing values të trajtuara,
+- ka rreshta outlier të larguar me IQR,
 - ka veçori të reja të dobishme,
 - ka më pak zhurmë,
 - dhe është i gatshëm për Fazën II të machine learning.
@@ -232,25 +290,23 @@ Ky dataset:
 ├── preprocessing_modules.py
 ├── dataset.csv
 ├── processedfiles/
-│   └── ml_ready.csv
+│   ├── ml_ready.csv
+│   └── label_mappings.txt
 ├── README.md
 ├── requirements.txt
 ```
 
 Shikimi i datasetit perfundimtar:
 ```python
+import pandas as pd
 
-timestamp	logName	receiveTimestamp	labels.authorization.k8s.io/decision	resource.labels.project_id	resource.labels.location	resource.labels.cluster_name	protoPayload.authenticationInfo.principalEmail	protoPayload.authorizationInfo	protoPayload.methodName	protoPayload.requestMetadata.callerIp	protoPayload.requestMetadata.callerSuppliedUserAgent	protoPayload.resourceName	protoPayload.status.code	protoPayload.status.message	anonymous_principal	timestamp__epoch_s	receiveTimestamp__epoch_s	callerIp_first_octet	logName__le	labels.authorization.k8s.io/decision__le	resource.labels.project_id__le	resource.labels.location__le	resource.labels.cluster_name__le	protoPayload.methodName__le	protoPayload.requestMetadata.callerSuppliedUserAgent__le
-2024-11-03 16:38:07+00:00	projects/project123/logs/cloudaudit.googleapis.com%2Factivity	2024-11-03 16:38:58+00:00	forbid	project123	europe-west1	prod-cluster	admin@company.com	[{'resource': 'apis/networking.k8s.io/v1/networkpolicies', 'permission': 'io.k8s.patch'}]	io.k8s.patch	198.18.9.235	kubectl/v1.26.0 (darwin/amd64) kubernetes/b46c28f	apis/networking.k8s.io/v1/networkpolicies	0	OK	0	1730651887	1730651938	198	3	1	3	1	4	12	7
-2024-07-06 11:59:19+00:00	projects/project123/logs/cloudaudit.googleapis.com%2Factivity	2024-07-06 12:01:26+00:00	forbid	project123	us-central1	dev-cluster	dev@company.com	[{'resource': 'apis/v1/services', 'permission': 'io.k8s.get'}]	io.k8s.get	198.19.90.169	kubectl/v1.25.0 (linux/amd64) kubernetes/a866cbe	apis/v1/services	7	forbidden: User "dev@company.com" cannot get path "apis/v1/services"	0	1720267159	1720267286	198	3	1	3	3	0	9	6
-2024-03-06 04:05:32+00:00	projects/project123/logs/cloudaudit.googleapis.com%2Factivity	2024-03-06 04:09:49+00:00	forbid	project123	us-west1	nf-default	system:anonymous	[{'resource': 'apis/networking.k8s.io/v1/networkpolicies', 'permission': 'io.k8s.delete'}]	io.k8s.delete	198.18.39.24	kubectl/v1.25.0 (linux/amd64) kubernetes/a866cbe	apis/networking.k8s.io/v1/networkpolicies	0	OK	1	1709697932	1709698189	198	3	1	3	5	2	8	6
-2024-12-17 15:24:51+00:00	projects/project123/logs/cloudaudit.googleapis.com%2Factivity	2024-12-17 15:24:56+00:00	forbid	project123	europe-west1	nf-default	system:anonymous	[{'resource': 'apis/rbac.authorization.k8s.io/v1/roles', 'permission': 'io.k8s.put'}]	io.k8s.put	198.19.109.172	Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36	apis/rbac.authorization.k8s.io/v1/roles	3	Invalid argument	1	1734449091	1734449096	198	3	1	3	1	2	14	1
-2024-09-17 06:09:24+00:00	projects/project123/logs/cloudaudit.googleapis.com%2Factivity	2024-09-17 06:10:40+00:00	forbid	project123	europe-west1	nf-default	dev@company.com	[{'resource': 'global-protect/login.esp', 'permission': 'io.k8s.put'}]	io.k8s.put	198.18.83.217	kubectl/v1.25.0 (linux/amd64) kubernetes/a866cbe	global-protect/login.esp	3	Invalid argument	0	1726553364	1726553440	198	3	1	3	1	2	14	6
-2024-12-06 01:12:01+00:00	projects/project123/logs/cloudaudit.googleapis.com%2Factivity	2024-12-06 01:13:27+00:00	allow	project123	asia-southeast1	nf-default	system:anonymous	[{'resource': 'apis/batch/v1/jobs', 'permission': 'io.k8s.get'}]	io.k8s.get	198.18.79.228	Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36	apis/batch/v1/jobs	7	forbidden: User "system:anonymous" cannot get path "apis/batch/v1/jobs"	1	1733447521	1733447607	198	3	0	3	0	2	9	2
-2024-07-20 10:16:34+00:00	projects/project123/logs/cloudaudit.googleapis.com%2Factivity	2024-07-20 10:17:14+00:00	allow	project123	europe-west1	dev-cluster	service-account@company.iam.gserviceaccount.com	[{'resource': 'apis/v1/services', 'permission': 'io.k8s.delete'}]	io.k8s.delete	198.19.148.36	kubectl/v1.26.0 (darwin/amd64) kubernetes/b46c28f	apis/v1/services	13	Internal error	0	1721470594	1721470634	198	3	0	3	1	0	8	7
-2024-07-25 20:21:32+00:00	projects/project123/logs/cloudaudit.googleapis.com%2Factivity	2024-07-25 20:22:21+00:00	forbid	project123	asia-southeast1	prod-cluster	dev@company.com	[{'resource': 'apis/apps/v1/deployments', 'permission': 'io.k8s.post'}]	io.k8s.post	198.18.224.49	kubectl/v1.25.0 (linux/amd64) kubernetes/a866cbe	apis/apps/v1/deployments	13	Internal error	0	1721938892	1721938941	198	3	1	3	0	4	13	6
-2024-12-25 21:45:28+00:00	projects/project123/logs/cloudaudit.googleapis.com%2Factivity	2024-12-25 21:48:03+00:00	forbid	project123	asia-southeast1	test-cluster	admin@company.com	[{'resource': 'apis/v1/services', 'permission': 'io.k8s.delete'}]	io.k8s.delete	198.19.199.232	Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36 Edg/115.0.1901.203	apis/v1/services	3	Invalid argument	0	1735163128	1735163283	198	3	1	3	0	6	8	3
-<img width="32766" height="291" alt="image" src="https://github.com/user-attachments/assets/ea2d573d-f56c-4996-b08a-0616d7f11906" />
+df = pd.read_csv("processedfiles/ml_ready.csv")
+print(df.head(3))
+print(df.columns.tolist())
+
+# mapping i label encoding:
+with open("processedfiles/label_mappings.txt", "r", encoding="utf-8") as f:
+    print(f.read().splitlines()[:20])
 
 ```
 ---
