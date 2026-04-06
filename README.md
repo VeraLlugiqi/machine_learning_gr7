@@ -282,19 +282,80 @@ Ky dataset:
 
 ---
 
-## 8. Struktura e projektit
+### Faza II: Trajnimi i modelit (Anomaly Detection)
 
-```text
-.
-├── data.py
-├── preprocessing_modules.py
-├── dataset.csv
-├── processedfiles/
-│   ├── ml_ready.csv
-│   └── label_mappings.txt
-├── README.md
-├── requirements.txt
+Pas parapërpunimit, dataset-i `processedfiles/ml_ready.csv` është **numerik** dhe përfshin edhe `timestamp_delay_s` (vonesa mes `receiveTimestamp` dhe `timestamp`, e llogaritur automatikisht në pipeline).
+
+### 7.1 Ndarja e features dhe target
+
+- **Target** (vetëm për **kontroll / vlerësim**, jo për trajnim të Isolation Forest):
+  ```python
+  y = df["labels.authorization.k8s.io/decision__le"]
+  ```
+- **Features** (përdoren për model):
+  ```python
+  X = df.drop(columns=["labels.authorization.k8s.io/decision__le"])
+  ```
+
+Isolation Forest është **jo-supervised**: `fit()` përdor vetëm `X`, jo `y`. `y` shërben për `crosstab` dhe për të parë nëse rreshtat e shënuar si anomali përputhen më shumë me `forbid` se me `allow` (heuristikë, jo “ground truth” për anomali).
+
+### 7.2 Kontrolli i dataset-it
+
+```python
+df.isnull().sum().sum()   # duhet 0
+df.dtypes                 # të gjitha numerike për X
 ```
+
+### 7.3 Scaling
+
+```python
+from sklearn.preprocessing import StandardScaler
+
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(X)
+```
+
+### 7.4 Trajnimi dhe parashikimi (skripti i projektit)
+
+
+```bash
+python train_anomaly.py
+```
+
+
+```bash
+python train_anomaly.py processedfiles/ml_ready.csv
+```
+
+Opsione të dobishme:
+
+- **Sweep i `contamination`** (0.01, 0.03, 0.05, 0.1) dhe crosstab për secilën:
+  ```bash
+  python train_anomaly.py --sweep
+  ```
+- **Ruajtje e modelit dhe scaler** (për përdorim të mëvonshëm):
+  ```bash
+  python train_anomaly.py --save
+  ```
+  Skedarët ruhen në `models/` (`isolation_forest.joblib`, `standard_scaler.joblib`, `feature_columns.joblib`).
+
+### 7.5 Çka të mos presësh gabimisht
+
+- **`labels.authorization.k8s.io/decision`** (`allow` / `forbid`) është klasifikim autorizimi, **jo** etiketë e vërtetë “anomaly / jo-anomaly”. Crosstab-i tregon vetëm nëse modeli i pa-supervised “anomaly” përputhet disi me `forbid` — është analizë eksploruese.
+- Për projekt akademik të fortë në të ardhmen: **ndarje kohore** (train në një periudhë, test në tjetrën), ose etiketa reale anomalish nëse ekzistojnë.
+
+### 7.6 Përmbledhje checklist
+
+- dataset numerik dhe pa missing në `X`/`y`
+- target i ndarë nga `X`
+- scaling para `IsolationForest`
+- model i trajnuar, parashikime `1` (normal) / `-1` (anomaly)
+- krahasim me target për interpretim
+- eksperiment me `contamination`
+
+---
+
+
 
 Shikimi i datasetit perfundimtar:
 ```python
@@ -316,15 +377,7 @@ Ky projekt përdor:
 - Python
 - pandas
 - numpy
+- scikit-learn (Isolation Forest, StandardScaler)
+- joblib (ruajtje modeli)
 
 ---
-
-## 10. Përfundim
-Ky projekt realizon parapërpunimin e dataset-it në mënyrë të përshtatshme për fazën përgatitore të machine learning.
-
-Janë zbatuar vetëm hapat që kanë kuptim për këtë dataset. Fokusi kryesor është:
-- cilësia e të dhënave,
-- trajtimi i missing values,
-- transformimi i kolonave,
-- ulja e zhurmës,
-- dhe përgatitja e dataset-it për modelim në Fazën II.
