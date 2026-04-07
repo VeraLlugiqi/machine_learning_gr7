@@ -5,7 +5,7 @@ Target-i përdoret vetëm për vlerësim / krahasim, jo për fit().
 import argparse
 import os
 import sys
-from typing import List, Optional, Tuple
+from typing import List, Tuple
 
 import joblib
 import numpy as np
@@ -55,6 +55,46 @@ def train_and_predict(
     return model, scaler, preds
 
 
+def build_analysis_tables(X: pd.DataFrame, y: pd.Series, preds: np.ndarray) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    df_results = X.copy()
+    df_results["anomaly"] = preds
+    df_results["target"] = y.values
+    return df_results, df_results[df_results["anomaly"] == -1].copy()
+
+
+def print_normal_vs_anomaly_stats(df_results: pd.DataFrame) -> None:
+    normal = df_results[df_results["anomaly"] == 1]
+    anomaly = df_results[df_results["anomaly"] == -1]
+    num_cols = [
+        c for c in df_results.columns
+        if c not in {"anomaly", "target"} and pd.api.types.is_numeric_dtype(df_results[c])
+    ]
+    print("\n--- Mean comparison (normal vs anomaly) ---")
+    comp = pd.DataFrame({
+        "normal_mean": normal[num_cols].mean(numeric_only=True),
+        "anomaly_mean": anomaly[num_cols].mean(numeric_only=True),
+    })
+    comp["delta_anom_minus_normal"] = comp["anomaly_mean"] - comp["normal_mean"]
+    print(comp.sort_values("delta_anom_minus_normal", key=np.abs, ascending=False).head(12))
+
+
+def save_delay_plot(df_results: pd.DataFrame, out_dir: str) -> str:
+    # Optional dependency for visualization.
+    import matplotlib.pyplot as plt
+
+    os.makedirs(out_dir, exist_ok=True)
+    out_path = os.path.join(out_dir, "delay_distribution.png")
+    plt.figure(figsize=(10, 5))
+    plt.hist(df_results["timestamp_delay_s"], bins=50)
+    plt.title("timestamp_delay_s distribution")
+    plt.xlabel("seconds")
+    plt.ylabel("count")
+    plt.tight_layout()
+    plt.savefig(out_path, dpi=140)
+    plt.close()
+    return out_path
+
+
 def main() -> None:
     root = os.path.dirname(os.path.abspath(__file__))
     default_csv = os.path.join(root, "processedfiles", "ml_ready.csv")
@@ -85,6 +125,16 @@ def main() -> None:
         "--save",
         action="store_true",
         help="Ruaj modelin dhe scaler në models/",
+    )
+    p.add_argument(
+        "--export-analysis",
+        action="store_true",
+        help="Ruaj rezultate/anomali/statistika në processedfiles/",
+    )
+    p.add_argument(
+        "--plot",
+        action="store_true",
+        help="Ruaj grafik të delay distribution (kërkon matplotlib).",
     )
     args = p.parse_args()
 
@@ -130,6 +180,26 @@ def main() -> None:
     print("(y = label encoding i decision; pred: 1=normal, -1=anomaly)\n")
     ct = pd.crosstab(y, preds, rownames=["y"], colnames=["pred"])
     print(ct)
+    df_results, anomalies = build_analysis_tables(X, y, preds)
+    print("\n--- Sample anomalies ---")
+    print(anomalies.head(5))
+    print_normal_vs_anomaly_stats(df_results)
+
+    analysis_dir = os.path.join(root, "processedfiles")
+    if args.export_analysis:
+        os.makedirs(analysis_dir, exist_ok=True)
+        df_results.to_csv(os.path.join(analysis_dir, "anomaly_results.csv"), index=False)
+        anomalies.to_csv(os.path.join(analysis_dir, "anomalies_only.csv"), index=False)
+        print("\nRuajtur analiza në:", analysis_dir)
+        print("- anomaly_results.csv")
+        print("- anomalies_only.csv")
+
+    if args.plot:
+        try:
+            plot_path = save_delay_plot(df_results, analysis_dir)
+            print("\nRuajtur grafiku:", plot_path)
+        except Exception as exc:
+            print("\nNuk u krijua grafiku (matplotlib mungon ose dështoi):", exc)
 
     if args.save:
         out_dir = os.path.join(root, "models")

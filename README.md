@@ -338,13 +338,32 @@ Opsione të dobishme:
   python train_anomaly.py --save
   ```
   Skedarët ruhen në `models/` (`isolation_forest.joblib`, `standard_scaler.joblib`, `feature_columns.joblib`).
+- **Eksport i analizës së anomalive**:
+  ```bash
+  python train_anomaly.py --export-analysis
+  ```
+  Kjo krijon `processedfiles/anomaly_results.csv` dhe `processedfiles/anomalies_only.csv`.
+- **Grafik i delay distribution**:
+  ```bash
+  python train_anomaly.py --plot
+  ```
+  Krijohet `processedfiles/delay_distribution.png` (nëse `matplotlib` është i instaluar).
 
-### 7.5 Çka të mos presësh gabimisht
+### 7.5 Interpretimi i sweep results (si t’i lexosh)
+
+Në rezultatet e tua:
+- `contamination=0.03` ka përqindje më të lartë të `forbid` brenda anomalive (më “precision-like” për flagging).
+- `contamination=0.1` kap më shumë `forbid` totalisht (më “recall-like”), por prodhon më shumë false alarms.
+- `contamination=0.05` është kompromis i mirë praktik për fillim.
+
+Pra, jo domosdoshmërisht `0.5` (50%) — ajo do ishte shumë agresive. Me shumë gjasë ke menduar `0.05`.
+
+### 7.6 Çka të mos presësh gabimisht
 
 - **`labels.authorization.k8s.io/decision`** (`allow` / `forbid`) është klasifikim autorizimi, **jo** etiketë e vërtetë “anomaly / jo-anomaly”. Crosstab-i tregon vetëm nëse modeli i pa-supervised “anomaly” përputhet disi me `forbid` — është analizë eksploruese.
 - Për projekt akademik të fortë në të ardhmen: **ndarje kohore** (train në një periudhë, test në tjetrën), ose etiketa reale anomalish nëse ekzistojnë.
 
-### 7.6 Përmbledhje checklist
+### 7.7 Përmbledhje checklist
 
 - dataset numerik dhe pa missing në `X`/`y`
 - target i ndarë nga `X`
