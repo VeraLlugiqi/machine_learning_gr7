@@ -351,52 +351,68 @@ Opsione të dobishme:
 
 ### 7.5 Interpretimi i sweep results (si t’i lexosh)
 
-Në rezultatet e tua:
+Në rezultatet:
 - `contamination=0.03` ka përqindje më të lartë të `forbid` brenda anomalive (më “precision-like” për flagging).
 - `contamination=0.1` kap më shumë `forbid` totalisht (më “recall-like”), por prodhon më shumë false alarms.
 - `contamination=0.05` është kompromis i mirë praktik për fillim.
 
 Pra, jo domosdoshmërisht `0.5` (50%) — ajo do ishte shumë agresive. Me shumë gjasë ke menduar `0.05`.
 
-### 7.6 Çka të mos presësh gabimisht
+### 7.6 Analiza normal vs anomaly
 
-- **`labels.authorization.k8s.io/decision`** (`allow` / `forbid`) është klasifikim autorizimi, **jo** etiketë e vërtetë “anomaly / jo-anomaly”. Crosstab-i tregon vetëm nëse modeli i pa-supervised “anomaly” përputhet disi me `forbid` — është analizë eksploruese.
-- Për projekt akademik të fortë në të ardhmen: **ndarje kohore** (train në një periudhë, test në tjetrën), ose etiketa reale anomalish nëse ekzistojnë.
+Në këtë hap bëhet krahasimi ndërmjet rasteve të klasifikuara si normale dhe atyre të identifikuara si anomali nga modeli.
 
-### 7.7 Përmbledhje checklist
-
-- dataset numerik dhe pa missing në `X`/`y`
-- target i ndarë nga `X`
-- scaling para `IsolationForest`
-- model i trajnuar, parashikime `1` (normal) / `-1` (anomaly)
-- krahasim me target për interpretim
-- eksperiment me `contamination`
-
----
-
-
-
-Shikimi i datasetit perfundimtar:
+Qëllimi është të kuptohet:
+- cilat veçori dallojnë anomalitë nga rastet normale
+- nëse anomalitë kanë sjellje të ndryshme (p.sh. delay më i lartë, ditë specifike, etj.)
+#### Ndarja e dataset-it
 ```python
-import pandas as pd
-
-df = pd.read_csv("processedfiles/ml_ready.csv")
-print(df.head(3))
-print(df.columns.tolist())
-
-# mapping i label encoding:
-with open("processedfiles/label_mappings.txt", "r", encoding="utf-8") as f:
-    print(f.read().splitlines()[:20])
-
+anomaly = df_results[df_results["anomaly"] == -1]
+normal = df_results[df_results["anomaly"] == 1]
 ```
----
+#### Krahasimi i shpërndarjes 
+```python
+print("Normal dayofweek:\\n", normal["dayofweek"].value_counts())
+print("\\nAnomaly dayofweek:\\n", anomaly["dayofweek"].value_counts())
+```
+#### Krahasimi i mesatareve
+```python
+print(normal.mean(numeric_only=True))
+print(anomaly.mean(numeric_only=True))
+```
+#### Vizualizimi i dallimeve
+```python
+import matplotlib.pyplot as plt
 
-## 9. Teknologjitë e përdorura
-Ky projekt përdor:
-- Python
-- pandas
-- numpy
-- scikit-learn (Isolation Forest, StandardScaler)
-- joblib (ruajtje modeli)
+plt.hist(normal["timestamp_delay_s"], bins=50, alpha=0.5, label="normal")
+plt.hist(anomaly["timestamp_delay_s"], bins=50, alpha=0.5, label="anomaly")
+plt.legend()
+plt.show()
+```
 
----
+### 7.7 Ruajtja e rezultateve dhe grafeve
+
+```bash
+python train_anomaly.py --deep-analysis
+```
+
+Krijohet folder i ri:
+
+```text
+analysis_outputs/run_YYYYMMDD_HHMMSS/
+```
+
+Përmbajtja:
+- `results_all_rows.csv` - të gjitha të dhënat me etiketën e anomalive
+- `results_anomalies_only.csv` - vetëm rreshtat e identifikuar si anomalë
+- `results_normal_only.csv` - vetëm rreshtat normalë
+- `mean_comparison_normal_vs_anomaly.csv` - vetëm rreshtat normalë
+- `counts_dayofweek.csv` - krahasimi i mesatareve
+- `counts_hour.csv` - shpërndarja sipas ditës
+- `counts_status_code.csv` - shpërndarja sipas orës
+- `crosstab_target_vs_pred.csv` - shpërndarja sipas status code
+- `run_config.json` - krahasimi i target-it me predikimin
+- `plots/plot_delay_normal_vs_anomaly.png` - grafiku i delay
+- `plots/plot_dayofweek_counts.png` - grafiku i ditëve
+- `plots/plot_status_code_top10.png` -grafiku i status code
+

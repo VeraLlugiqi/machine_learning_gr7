@@ -1,0 +1,23 @@
+{
+  "contamination": 0.05,
+  "n_estimators": 100,
+  "random_state": 42,
+  "rows_total": 10000,
+  "rows_anomaly": 500,
+  "rows_normal": 9500,
+  "features": [
+    "protoPayload.status.code",
+    "anonymous_principal",
+    "timestamp__epoch_s",
+    "logName__le",
+    "resource.labels.project_id__le",
+    "resource.labels.location__le",
+    "resource.labels.cluster_name__le",
+    "protoPayload.methodName__le",
+    "protoPayload.requestMetadata.callerSuppliedUserAgent__le",
+    "hour",
+    "dayofweek",
+    "is_weekend",
+    "timestamp_delay_s"
+  ]
+}

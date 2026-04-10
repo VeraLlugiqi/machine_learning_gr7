@@ -3,8 +3,10 @@ Trajnim i Isolation Forest për anomaly detection (jo-supervised).
 Target-i përdoret vetëm për vlerësim / krahasim, jo për fit().
 """
 import argparse
+import json
 import os
 import sys
+from datetime import datetime
 from typing import List, Tuple
 
 import joblib
@@ -95,6 +97,134 @@ def save_delay_plot(df_results: pd.DataFrame, out_dir: str) -> str:
     return out_path
 
 
+def save_comparison_plots(df_results: pd.DataFrame, out_dir: str) -> List[str]:
+    import matplotlib.pyplot as plt
+
+    os.makedirs(out_dir, exist_ok=True)
+    normal = df_results[df_results["anomaly"] == 1]
+    anomaly = df_results[df_results["anomaly"] == -1]
+    paths: List[str] = []
+
+    # 1) Overlay histogram for delay
+    plt.figure(figsize=(10, 5))
+    plt.hist(normal["timestamp_delay_s"], bins=50, alpha=0.5, label="normal")
+    plt.hist(anomaly["timestamp_delay_s"], bins=50, alpha=0.5, label="anomaly")
+    plt.title("timestamp_delay_s: normal vs anomaly")
+    plt.xlabel("seconds")
+    plt.ylabel("count")
+    plt.legend()
+    plt.tight_layout()
+    p1 = os.path.join(out_dir, "plot_delay_normal_vs_anomaly.png")
+    plt.savefig(p1, dpi=140)
+    plt.close()
+    paths.append(p1)
+
+    # 2) Day of week counts
+    day_counts = pd.DataFrame({
+        "normal": normal["dayofweek"].value_counts().sort_index(),
+        "anomaly": anomaly["dayofweek"].value_counts().sort_index(),
+    }).fillna(0)
+    day_counts.plot(kind="bar", figsize=(10, 5), title="dayofweek counts: normal vs anomaly")
+    plt.xlabel("dayofweek")
+    plt.ylabel("count")
+    plt.tight_layout()
+    p2 = os.path.join(out_dir, "plot_dayofweek_counts.png")
+    plt.savefig(p2, dpi=140)
+    plt.close()
+    paths.append(p2)
+
+    # 3) Status code counts (top classes)
+    status_counts = pd.DataFrame({
+        "normal": normal["protoPayload.status.code"].value_counts(),
+        "anomaly": anomaly["protoPayload.status.code"].value_counts(),
+    }).fillna(0).sort_values("anomaly", ascending=False).head(10)
+    status_counts.plot(kind="bar", figsize=(10, 5), title="status.code top counts: normal vs anomaly")
+    plt.xlabel("protoPayload.status.code")
+    plt.ylabel("count")
+    plt.tight_layout()
+    p3 = os.path.join(out_dir, "plot_status_code_top10.png")
+    plt.savefig(p3, dpi=140)
+    plt.close()
+    paths.append(p3)
+
+    return paths
+
+
+def export_detailed_analysis(
+    root: str,
+    X: pd.DataFrame,
+    y: pd.Series,
+    preds: np.ndarray,
+    contamination: float,
+    n_estimators: int,
+    random_state: int,
+    generate_plots: bool,
+) -> str:
+    run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
+    out_dir = os.path.join(root, "analysis_outputs", f"run_{run_id}")
+    os.makedirs(out_dir, exist_ok=True)
+
+    df_results, anomalies = build_analysis_tables(X, y, preds)
+    normal = df_results[df_results["anomaly"] == 1].copy()
+
+    # Main exported tables
+    df_results.to_csv(os.path.join(out_dir, "results_all_rows.csv"), index=False)
+    anomalies.to_csv(os.path.join(out_dir, "results_anomalies_only.csv"), index=False)
+    normal.to_csv(os.path.join(out_dir, "results_normal_only.csv"), index=False)
+
+    # Crosstab
+    ct = pd.crosstab(y, preds, rownames=["y"], colnames=["pred"])
+    ct.to_csv(os.path.join(out_dir, "crosstab_target_vs_pred.csv"))
+
+    # Means and deltas
+    num_cols = [
+        c for c in df_results.columns
+        if c not in {"anomaly", "target"} and pd.api.types.is_numeric_dtype(df_results[c])
+    ]
+    mean_comp = pd.DataFrame({
+        "normal_mean": normal[num_cols].mean(numeric_only=True),
+        "anomaly_mean": anomalies[num_cols].mean(numeric_only=True),
+    })
+    mean_comp["delta_anom_minus_normal"] = mean_comp["anomaly_mean"] - mean_comp["normal_mean"]
+    mean_comp = mean_comp.sort_values("delta_anom_minus_normal", key=np.abs, ascending=False)
+    mean_comp.to_csv(os.path.join(out_dir, "mean_comparison_normal_vs_anomaly.csv"))
+
+    # Value counts for key features
+    pd.DataFrame({
+        "normal_count": normal["dayofweek"].value_counts().sort_index(),
+        "anomaly_count": anomalies["dayofweek"].value_counts().sort_index(),
+    }).fillna(0).to_csv(os.path.join(out_dir, "counts_dayofweek.csv"))
+
+    pd.DataFrame({
+        "normal_count": normal["hour"].value_counts().sort_index(),
+        "anomaly_count": anomalies["hour"].value_counts().sort_index(),
+    }).fillna(0).to_csv(os.path.join(out_dir, "counts_hour.csv"))
+
+    pd.DataFrame({
+        "normal_count": normal["protoPayload.status.code"].value_counts().sort_index(),
+        "anomaly_count": anomalies["protoPayload.status.code"].value_counts().sort_index(),
+    }).fillna(0).to_csv(os.path.join(out_dir, "counts_status_code.csv"))
+
+    # Minimal run metadata
+    config = {
+        "contamination": contamination,
+        "n_estimators": n_estimators,
+        "random_state": random_state,
+        "rows_total": int(len(df_results)),
+        "rows_anomaly": int((preds == -1).sum()),
+        "rows_normal": int((preds == 1).sum()),
+        "features": list(X.columns),
+    }
+    with open(os.path.join(out_dir, "run_config.json"), "w", encoding="utf-8") as f:
+        json.dump(config, f, indent=2)
+
+    if generate_plots:
+        plots_dir = os.path.join(out_dir, "plots")
+        save_comparison_plots(df_results, plots_dir)
+
+    return out_dir
+
+
 def main() -> None:
     root = os.path.dirname(os.path.abspath(__file__))
     default_csv = os.path.join(root, "processedfiles", "ml_ready.csv")
@@ -135,6 +265,11 @@ def main() -> None:
         "--plot",
         action="store_true",
         help="Ruaj grafik të delay distribution (kërkon matplotlib).",
+    )
+    p.add_argument(
+        "--deep-analysis",
+        action="store_true",
+        help="Ruaj analizë të plotë dhe grafe në analysis_outputs/run_*/",
     )
     args = p.parse_args()
 
@@ -200,6 +335,22 @@ def main() -> None:
             print("\nRuajtur grafiku:", plot_path)
         except Exception as exc:
             print("\nNuk u krijua grafiku (matplotlib mungon ose dështoi):", exc)
+
+    if args.deep_analysis:
+        try:
+            out_dir = export_detailed_analysis(
+                root=root,
+                X=X,
+                y=y,
+                preds=preds,
+                contamination=args.contamination,
+                n_estimators=args.n_estimators,
+                random_state=args.random_state,
+                generate_plots=True,
+            )
+            print("\nRuajtur analiza e plotë në:", out_dir)
+        except Exception as exc:
+            print("\nNuk u ruajt analiza e plotë:", exc, file=sys.stderr)
 
     if args.save:
         out_dir = os.path.join(root, "models")
