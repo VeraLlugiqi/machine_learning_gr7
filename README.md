@@ -303,7 +303,7 @@ models/
     └── feature_columns.joblib
 ```
 
-### 7.1 Përgatitja e përbashkët (për të gjitha modelet e kësaj faze)
+### 7.1 Përgatitja e përbashkët
 
 - Hyrja: `processedfiles/ml_ready.csv`
 - Ndarja e të dhënave:
@@ -318,51 +318,130 @@ Kodi i përbashkët: `anomaly_models/common.py` (`load_ml_ready`, `validate_feat
 
 ### 7.2 Trajnimi me Isolation Forest
 
-- Modeli: `IsolationForest` nga scikit-learn
-- Natyra: **jo-supervised** — `fit()` përdor vetëm `X` (pas scaling); `y` përdoret vetëm për `crosstab` pas `predict`, jo brenda `fit`.
+Në këtë fazë u përdor algoritmi **Isolation Forest** për të realizuar anomaly detection mbi dataset-in e përpunuar.
 
-Komanda e rekomanduar:
+Isolation Forest është një model **jo-supervised**, i cili nuk përdor etiketa gjatë trajnimit. Në vend të kësaj, ai identifikon raste që devijojnë nga shpërndarja normale e të dhënave. Logjika e tij bazohet në faktin që anomalitë zakonisht janë më të lehta për t’u izoluar se rastet normale, prandaj kërkojnë më pak ndarje (splits) në pemët vendimmarrëse.
 
-```bash
-python -m anomaly_models.isolation_forest
+Në këtë projekt, modeli u trajnuar vetëm mbi matricën e veçorive `X`, ndërsa kolona `decision` (`y`) u përdor vetëm për krahasim dhe interpretim të rezultateve.
+
+---
+
+#### Ndarja e features dhe target
+
+```python
+import pandas as pd
+
+TARGET_COL = "labels.authorization.k8s.io/decision__le"
+
+df = pd.read_csv("processedfiles/ml_ready.csv", low_memory=False)
+
+y = df[TARGET_COL]
+X = df.drop(columns=[TARGET_COL])
 ```
 
-Me rrugë të plotë te CSV:
+---
 
-```bash
-python -m anomaly_models.isolation_forest processedfiles/ml_ready.csv
+#### Trajnimi i modelit
+
+```python
+from sklearn.ensemble import IsolationForest
+
+model = IsolationForest(
+    n_estimators=100,
+    contamination=0.05,
+    random_state=42,
+    n_jobs=-1
+)
+
+model.fit(X_scaled)
+preds = model.predict(X_scaled)
 ```
 
-Sweep i `contamination` (0.01, 0.03, 0.05, 0.1) me crosstab për secilën:
+Në rezultatet e modelit:
+
+* `1` përfaqëson raste normale
+* `-1` përfaqëson anomalitë
+
+---
+
+#### Vlerësimi fillestar i rezultateve
+
+```python
+import numpy as np
+import pandas as pd
+
+print("Anomaly count (pred == -1):", int(np.sum(preds == -1)))
+print("Normal count (pred == 1):", int(np.sum(preds == 1)))
+
+ct = pd.crosstab(y, preds, rownames=["y"], colnames=["pred"])
+print(ct)
+```
+
+Ky krahasim përdoret për të analizuar nëse rastet e identifikuara si anomali përputhen më shpesh me klasën më të rrallë (`forbid`), edhe pse modeli nuk është trajnuar drejtpërdrejt për klasifikim.
+
+---
+
+#### Testimi i parametrave (`contamination`)
+
+Për të zgjedhur konfigurimin më të përshtatshëm, u provuan disa vlera të parametrin `contamination`:
 
 ```bash
 python -m anomaly_models.isolation_forest --sweep
 ```
 
-Ruajtja e modelit dhe scaler për IF:
+U testuan vlerat:
 
-```bash
-python -m anomaly_models.isolation_forest --save
+* `0.01`
+* `0.03`
+* `0.05`
+* `0.1`
+
+Nga rezultatet u vërejt se:
+
+* vlerat e ulëta janë më konservative dhe identifikojnë më pak anomalitë
+* vlerat e larta janë më agresive dhe rrisin numrin e rasteve të klasifikuara si anomali
+* vlera `0.05` ofron kompromisin më të mirë praktik
+
+---
+
+#### Konfigurimi final i modelit
+
+Në bazë të eksperimenteve, modeli final u vendos:
+
+* `IsolationForest`
+* `contamination = 0.05`
+* `n_estimators = 100`
+
+Rezultati final:
+
+* `anomaly count = 500`
+* `normal count = 9500`
+
+Crosstab:
+
 ```
-
-E njëjta përmes hyrjes së shkurtër:
-
-```bash
-python train_anomaly.py --save
-```
-
-Leximi i shkurtë i sweep për IF: `contamination=0.05` zgjidhet si vlerë finale; `0.03` më konservativ; `0.1` më shumë alarme. `0.5` do të thotë 50% anomali dhe nuk përdoret këtu.
-
-**Parametra finale dhe rezultati për Isolation Forest**
-
-- `contamination = 0.05`
-- `n_estimators = 100`
-- `anomaly count = 500`, `normal count = 9500`
-- Crosstab final:
-
-```text
 pred   -1     1
 y
 0     171  9288
 1     329   212
 ```
+
+---
+
+#### Ruajtja e modelit
+
+```bash
+python -m anomaly_models.isolation_forest --save
+```
+
+Ky hap ruan:
+
+* modelin (`isolation_forest.joblib`)
+* scaler-in (`standard_scaler.joblib`)
+* listën e feature-ve (`feature_columns.joblib`)
+
+---
+
+Modeli Isolation Forest rezultoi i përshtatshëm për këtë dataset, duke identifikuar një numër të arsyeshëm anomalish dhe duke kapur një pjesë të konsiderueshme të rasteve të pazakonta.
+
+Duhet theksuar se modeli nuk është trajnuar për klasifikim të drejtpërdrejtë të klasës `forbid`, por për identifikim të devijimeve nga sjellja normale në të dhëna.
