@@ -249,18 +249,15 @@ Nuk u përfshi sepse dataset-i ka madhësi të menaxhueshme dhe nuk ka nevojë p
 
 ---
 
-## 5. Çfarë u shtua si përmirësim
-Dy hapa të mirë që mund të përfshihen pa e tepruar janë:
+## 5. Çfarë u shtua
 
-1. **Feature Selection i thjeshtë**
+1. **Feature Selection**
    - heq kolonat konstante
    - heq kolonat me cardinality shumë të lartë
 
 2. **Basic Target Inspection**
    - kontrollon shpërndarjen e target-it të mundshëm
    - ndihmon për të kuptuar klasat para fazës së machine learning
-
-Këta hapa e bëjnë projektin më të plotë, por pa kaluar në Fazën II.
 
 ---
 
@@ -282,137 +279,90 @@ Ky dataset:
 
 ---
 
-### Faza II: Trajnimi i modelit (Anomaly Detection)
+### Faza II: Trajnimi i modeleve për anomaly detection
 
-Pas parapërpunimit, dataset-i `processedfiles/ml_ready.csv` është **numerik** dhe përfshin edhe `timestamp_delay_s` (vonesa mes `receiveTimestamp` dhe `timestamp`, e llogaritur automatikisht në pipeline).
+Pas parapërpunimit, dataset-i `processedfiles/ml_ready.csv` është **numerik** dhe përfshin `timestamp_delay_s` (vonesa mes receive dhe timestamp, nga pipeline-i në `data.py`).
 
-### 7.1 Ndarja e features dhe target
+Në këtë fazë planifikohen **tre** modele për anomaly detection; 
+1. **Isolation Forest**. 
+2.
+3.
 
-- **Target** (vetëm për **kontroll / vlerësim**, jo për trajnim të Isolation Forest):
-  ```python
-  y = df["labels.authorization.k8s.io/decision__le"]
-  ```
-- **Features** (përdoren për model):
-  ```python
-  X = df.drop(columns=["labels.authorization.k8s.io/decision__le"])
-  ```
-
-Isolation Forest është **jo-supervised**: `fit()` përdor vetëm `X`, jo `y`. `y` shërben për `crosstab` dhe për të parë nëse rreshtat e shënuar si anomali përputhen më shumë me `forbid` se me `allow` (heuristikë, jo “ground truth” për anomali).
-
-### 7.2 Kontrolli i dataset-it
-
-```python
-df.isnull().sum().sum()   # duhet 0
-df.dtypes                 # të gjitha numerike për X
-```
-
-### 7.3 Scaling
-
-```python
-from sklearn.preprocessing import StandardScaler
-
-scaler = StandardScaler()
-X_scaled = scaler.fit_transform(X)
-```
-
-### 7.4 Trajnimi dhe parashikimi (skripti i projektit)
-
-
-```bash
-python train_anomaly.py
-```
-
-
-```bash
-python train_anomaly.py processedfiles/ml_ready.csv
-```
-
-Opsione të dobishme:
-
-- **Sweep i `contamination`** (0.01, 0.03, 0.05, 0.1) dhe crosstab për secilën:
-  ```bash
-  python train_anomaly.py --sweep
-  ```
-- **Ruajtje e modelit dhe scaler** (për përdorim të mëvonshëm):
-  ```bash
-  python train_anomaly.py --save
-  ```
-  Skedarët ruhen në `models/` (`isolation_forest.joblib`, `standard_scaler.joblib`, `feature_columns.joblib`).
-- **Eksport i analizës së anomalive**:
-  ```bash
-  python train_anomaly.py --export-analysis
-  ```
-  Kjo krijon `processedfiles/anomaly_results.csv` dhe `processedfiles/anomalies_only.csv`.
-- **Grafik i delay distribution**:
-  ```bash
-  python train_anomaly.py --plot
-  ```
-  Krijohet `processedfiles/delay_distribution.png` (nëse `matplotlib` është i instaluar).
-
-### 7.5 Interpretimi i sweep results (si t’i lexosh)
-
-Në rezultatet:
-- `contamination=0.03` ka përqindje më të lartë të `forbid` brenda anomalive (më “precision-like” për flagging).
-- `contamination=0.1` kap më shumë `forbid` totalisht (më “recall-like”), por prodhon më shumë false alarms.
-- `contamination=0.05` është kompromis i mirë praktik për fillim.
-
-Pra, jo domosdoshmërisht `0.5` (50%) — ajo do ishte shumë agresive. Me shumë gjasë ke menduar `0.05`.
-
-### 7.6 Analiza normal vs anomaly
-
-Në këtë hap bëhet krahasimi ndërmjet rasteve të klasifikuara si normale dhe atyre të identifikuara si anomali nga modeli.
-
-Qëllimi është të kuptohet:
-- cilat veçori dallojnë anomalitë nga rastet normale
-- nëse anomalitë kanë sjellje të ndryshme (p.sh. delay më i lartë, ditë specifike, etj.)
-#### Ndarja e dataset-it
-```python
-anomaly = df_results[df_results["anomaly"] == -1]
-normal = df_results[df_results["anomaly"] == 1]
-```
-#### Krahasimi i shpërndarjes 
-```python
-print("Normal dayofweek:\\n", normal["dayofweek"].value_counts())
-print("\\nAnomaly dayofweek:\\n", anomaly["dayofweek"].value_counts())
-```
-#### Krahasimi i mesatareve
-```python
-print(normal.mean(numeric_only=True))
-print(anomaly.mean(numeric_only=True))
-```
-#### Vizualizimi i dallimeve
-```python
-import matplotlib.pyplot as plt
-
-plt.hist(normal["timestamp_delay_s"], bins=50, alpha=0.5, label="normal")
-plt.hist(anomaly["timestamp_delay_s"], bins=50, alpha=0.5, label="anomaly")
-plt.legend()
-plt.show()
-```
-
-### 7.7 Ruajtja e rezultateve dhe grafeve
-
-```bash
-python train_anomaly.py --deep-analysis
-```
-
-Krijohet folder i ri:
+#### Struktura e skedarëve (Faza 2)
 
 ```text
-analysis_outputs/run_YYYYMMDD_HHMMSS/
+anomaly_models/
+├── __init__.py
+├── common.py                 # ngarkim ml_ready, validim — përbashkët për të gjitha modelet
+└── isolation_forest.py     # trajnim + CLI vetëm për Isolation Forest
+train_anomaly.py              # hyrje e shkurtër; thërret IF (kompatibilitet me komandat e vjetra)
+models/
+└── isolation_forest/         # artefaktet e IF pas --save
+    ├── isolation_forest.joblib
+    ├── standard_scaler.joblib
+    └── feature_columns.joblib
 ```
 
-Përmbajtja:
-- `results_all_rows.csv` - të gjitha të dhënat me etiketën e anomalive
-- `results_anomalies_only.csv` - vetëm rreshtat e identifikuar si anomalë
-- `results_normal_only.csv` - vetëm rreshtat normalë
-- `mean_comparison_normal_vs_anomaly.csv` - vetëm rreshtat normalë
-- `counts_dayofweek.csv` - krahasimi i mesatareve
-- `counts_hour.csv` - shpërndarja sipas ditës
-- `counts_status_code.csv` - shpërndarja sipas orës
-- `crosstab_target_vs_pred.csv` - shpërndarja sipas status code
-- `run_config.json` - krahasimi i target-it me predikimin
-- `plots/plot_delay_normal_vs_anomaly.png` - grafiku i delay
-- `plots/plot_dayofweek_counts.png` - grafiku i ditëve
-- `plots/plot_status_code_top10.png` -grafiku i status code
+### 7.1 Përgatitja e përbashkët (për të gjitha modelet e kësaj faze)
 
+- Hyrja: `processedfiles/ml_ready.csv`
+- Ndarja e të dhënave:
+  ```python
+  y = df["labels.authorization.k8s.io/decision__le"]
+  X = df.drop(columns=["labels.authorization.k8s.io/decision__le"])
+  ```
+- Kontrolli: pa vlera që mungojnë në `X` dhe `y`; të gjitha kolonat e `X` numerike
+- Scaling: para trajnitimit përdoret `StandardScaler` mbi `X` (implementimi është brenda secilit skedar modeli)
+
+Kodi i përbashkët: `anomaly_models/common.py` (`load_ml_ready`, `validate_features`).
+
+### 7.2 Trajnimi me Isolation Forest
+
+- Modeli: `IsolationForest` nga scikit-learn
+- Natyra: **jo-supervised** — `fit()` përdor vetëm `X` (pas scaling); `y` përdoret vetëm për `crosstab` pas `predict`, jo brenda `fit`.
+
+Komanda e rekomanduar:
+
+```bash
+python -m anomaly_models.isolation_forest
+```
+
+Me rrugë të plotë te CSV:
+
+```bash
+python -m anomaly_models.isolation_forest processedfiles/ml_ready.csv
+```
+
+Sweep i `contamination` (0.01, 0.03, 0.05, 0.1) me crosstab për secilën:
+
+```bash
+python -m anomaly_models.isolation_forest --sweep
+```
+
+Ruajtja e modelit dhe scaler për IF:
+
+```bash
+python -m anomaly_models.isolation_forest --save
+```
+
+E njëjta përmes hyrjes së shkurtër:
+
+```bash
+python train_anomaly.py --save
+```
+
+Leximi i shkurtë i sweep për IF: `contamination=0.05` zgjidhet si vlerë finale; `0.03` më konservativ; `0.1` më shumë alarme. `0.5` do të thotë 50% anomali dhe nuk përdoret këtu.
+
+**Parametra finale dhe rezultati për Isolation Forest**
+
+- `contamination = 0.05`
+- `n_estimators = 100`
+- `anomaly count = 500`, `normal count = 9500`
+- Crosstab final:
+
+```text
+pred   -1     1
+y
+0     171  9288
+1     329   212
+```
