@@ -283,10 +283,9 @@ Ky dataset:
 
 Pas parapërpunimit, dataset-i `processedfiles/ml_ready.csv` është **numerik** dhe përfshin `timestamp_delay_s` (vonesa mes receive dhe timestamp, nga pipeline-i në `data.py`).
 
-Në këtë fazë planifikohen **tre** modele për anomaly detection; 
-1. **Isolation Forest**. 
-2.
-3.
+Në këtë fazë janë të implementuara **dy** modele për anomaly detection:
+1. **Isolation Forest**
+2. **Local Outlier Factor (LOF)**
 
 #### Struktura e skedarëve (Faza 2)
 
@@ -294,11 +293,16 @@ Në këtë fazë planifikohen **tre** modele për anomaly detection;
 anomaly_models/
 ├── __init__.py
 ├── common.py                 # ngarkim ml_ready, validim — përbashkët për të gjitha modelet
-└── isolation_forest.py     # trajnim + CLI vetëm për Isolation Forest
-train_anomaly.py              # hyrje e shkurtër; thërret IF (kompatibilitet me komandat e vjetra)
+├── isolation_forest.py       # trajnim + CLI për Isolation Forest
+└── local_outlier_factor.py   # trajnim + CLI për Local Outlier Factor
+train_anomaly.py              # hyrje e shkurtër; zgjedh metodën me --method
 models/
-└── isolation_forest/         # artefaktet e IF pas --save
-    ├── isolation_forest.joblib
+├── isolation_forest/         # artefaktet e IF pas --save
+│   ├── isolation_forest.joblib
+│   ├── standard_scaler.joblib
+│   └── feature_columns.joblib
+└── local_outlier_factor/     # artefaktet e LOF pas --save
+    ├── local_outlier_factor.joblib
     ├── standard_scaler.joblib
     └── feature_columns.joblib
 ```
@@ -314,7 +318,7 @@ models/
 - Kontrolli: pa vlera që mungojnë në `X` dhe `y`; të gjitha kolonat e `X` numerike
 - Scaling: para trajnitimit përdoret `StandardScaler` mbi `X` (implementimi është brenda secilit skedar modeli)
 
-Kodi i përbashkët: `anomaly_models/common.py` (`load_ml_ready`, `validate_features`).
+Kodi i përbashkët: `anomaly_models/common.py` (`load_ml_ready`, `validate_features`, `export_predictions`).
 
 ### 7.2 Trajnimi me Isolation Forest
 
@@ -439,9 +443,41 @@ Ky hap ruan:
 * modelin (`isolation_forest.joblib`)
 * scaler-in (`standard_scaler.joblib`)
 * listën e feature-ve (`feature_columns.joblib`)
+* opsionalisht rezultatet me `--export-results`
 
 ---
 
 Modeli Isolation Forest rezultoi i përshtatshëm për këtë dataset, duke identifikuar një numër të arsyeshëm anomalish dhe duke kapur një pjesë të konsiderueshme të rasteve të pazakonta.
 
 Duhet theksuar se modeli nuk është trajnuar për klasifikim të drejtpërdrejtë të klasës `forbid`, por për identifikim të devijimeve nga sjellja normale në të dhëna.
+
+### 7.3 Trajnimi me Local Outlier Factor
+
+Si metodë e dytë u shtua **Local Outlier Factor (LOF)**, i cili mat sa i izoluar është një rresht krahasuar me dendësinë lokale të fqinjëve të tij më të afërt.
+
+Ky model është i dobishëm kur anomalitë nuk dallohen vetëm globalisht, por edhe si sjellje që devijon nga grupi lokal ku bën pjesë pika.
+
+Trajnimi mund të bëhet me:
+
+```bash
+python train_anomaly.py --method local_outlier_factor --save --export-results
+```
+
+ose direkt:
+
+```bash
+python -m anomaly_models.local_outlier_factor --save --export-results
+```
+
+Parametrat kryesorë:
+
+* `contamination = 0.05`
+* `n_neighbors = 20`
+
+Daljet e ruajtura:
+
+* `models/local_outlier_factor/local_outlier_factor.joblib`
+* `models/local_outlier_factor/standard_scaler.joblib`
+* `models/local_outlier_factor/feature_columns.joblib`
+* `processedfiles/local_outlier_factor_results.csv`
+* `processedfiles/local_outlier_factor_anomalies_only.csv`

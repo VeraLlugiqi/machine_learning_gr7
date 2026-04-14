@@ -1,7 +1,8 @@
 """
-Trajnim dhe finalizim: vetëm Isolation Forest.
+Trajnim dhe finalizim: Local Outlier Factor.
 
-Ruajtja: models/isolation_forest/
+Ruajtja e modelit: models/local_outlier_factor/
+Ruajtja e rezultateve: processedfiles/local_outlier_factor_results.csv
 """
 import argparse
 import os
@@ -11,7 +12,7 @@ from typing import Tuple
 import joblib
 import numpy as np
 import pandas as pd
-from sklearn.ensemble import IsolationForest
+from sklearn.neighbors import LocalOutlierFactor
 from sklearn.preprocessing import StandardScaler
 
 from anomaly_models.common import (
@@ -26,29 +27,25 @@ from anomaly_models.common import (
 def train_and_predict(
     X: pd.DataFrame,
     contamination: float,
-    n_estimators: int,
-    random_state: int,
-) -> Tuple[IsolationForest, StandardScaler, np.ndarray]:
+    n_neighbors: int,
+) -> Tuple[LocalOutlierFactor, StandardScaler, np.ndarray]:
     scaler = StandardScaler()
     X_scaled = scaler.fit_transform(X)
-    model = IsolationForest(
-        n_estimators=n_estimators,
+    model = LocalOutlierFactor(
+        n_neighbors=n_neighbors,
         contamination=contamination,
-        random_state=random_state,
-        n_jobs=-1,
+        novelty=True,
     )
     model.fit(X_scaled)
     preds = model.predict(X_scaled)
     return model, scaler, preds
 
 
-def run_sweep(
-    X: pd.DataFrame, y: pd.Series, n_estimators: int, random_state: int
-) -> None:
+def run_sweep(X: pd.DataFrame, y: pd.Series, n_neighbors: int) -> None:
     contaminations = [0.01, 0.03, 0.05, 0.1]
-    print("\n--- Sweep contamination (Isolation Forest) ---")
+    print("\n--- Sweep contamination (Local Outlier Factor) ---")
     for c in contaminations:
-        _, _, preds = train_and_predict(X, c, n_estimators, random_state)
+        _, _, preds = train_and_predict(X, c, n_neighbors)
         n_anom = int(np.sum(preds == -1))
         print(f"contamination={c}: anomaly count = {n_anom}")
         ct = pd.crosstab(y, preds, rownames=["y (decision__le)"], colnames=["pred"])
@@ -57,14 +54,13 @@ def run_sweep(
 
 
 def save_artifacts(
-    model: IsolationForest,
+    model: LocalOutlierFactor,
     scaler: StandardScaler,
     feature_names: list,
 ) -> str:
-    root = project_root()
-    out_dir = os.path.join(root, "models", "isolation_forest")
+    out_dir = os.path.join(project_root(), "models", "local_outlier_factor")
     os.makedirs(out_dir, exist_ok=True)
-    joblib.dump(model, os.path.join(out_dir, "isolation_forest.joblib"))
+    joblib.dump(model, os.path.join(out_dir, "local_outlier_factor.joblib"))
     joblib.dump(scaler, os.path.join(out_dir, "standard_scaler.joblib"))
     joblib.dump(feature_names, os.path.join(out_dir, "feature_columns.joblib"))
     return out_dir
@@ -72,7 +68,7 @@ def save_artifacts(
 
 def main() -> None:
     p = argparse.ArgumentParser(
-        description="Faza 2 — Isolation Forest: trajnim mbi processedfiles/ml_ready.csv"
+        description="Faza 2 — Local Outlier Factor: trajnim mbi processedfiles/ml_ready.csv"
     )
     p.add_argument(
         "csv",
@@ -81,8 +77,7 @@ def main() -> None:
         help="Rruga te ml_ready.csv",
     )
     p.add_argument("--contamination", type=float, default=0.05)
-    p.add_argument("--n-estimators", type=int, default=100)
-    p.add_argument("--random-state", type=int, default=42)
+    p.add_argument("--n-neighbors", type=int, default=20)
     p.add_argument("--sweep", action="store_true")
     p.add_argument("--save", action="store_true")
     p.add_argument("--export-results", action="store_true")
@@ -103,17 +98,15 @@ def main() -> None:
     print("Të gjitha kolonat e X janë numerike: OK")
 
     if args.sweep:
-        run_sweep(X, y, args.n_estimators, args.random_state)
+        run_sweep(X, y, args.n_neighbors)
         return
 
-    model, scaler, preds = train_and_predict(
-        X, args.contamination, args.n_estimators, args.random_state
-    )
+    model, scaler, preds = train_and_predict(X, args.contamination, args.n_neighbors)
     ct = pd.crosstab(y, preds, rownames=["y"], colnames=["pred"])
 
-    print("\n--- Isolation Forest (modeli final) ---")
+    print("\n--- Local Outlier Factor (modeli final) ---")
     print("contamination:", args.contamination)
-    print("n_estimators:", args.n_estimators)
+    print("n_neighbors:", args.n_neighbors)
     print("Anomaly count (pred == -1):", int(np.sum(preds == -1)))
     print("Normal count (pred == 1):", int(np.sum(preds == 1)))
     print("\n--- Crosstab: target vs pred ---")
@@ -121,7 +114,7 @@ def main() -> None:
 
     if args.export_results:
         results_path, anomalies_path = export_predictions(
-            X, y, preds, "isolation_forest"
+            X, y, preds, "local_outlier_factor"
         )
         print("\nRezultatet u ruajtën në:", results_path)
         print("Vetëm anomalitë u ruajtën në:", anomalies_path)
