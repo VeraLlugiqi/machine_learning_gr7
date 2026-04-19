@@ -155,7 +155,7 @@ def main() -> None:
     )
     ct = pd.crosstab(y, preds, rownames=["y"], colnames=["pred"])
 
-    print("\n--- One-Class SVM (modeli final) ---")
+    print("\n--- One-Class SVM ---")
     print("nu:", args.nu)
     print("kernel:", args.kernel)
     print("gamma:", args.gamma)

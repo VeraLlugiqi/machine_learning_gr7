@@ -298,19 +298,6 @@ anomaly_models/
 ├── local_outlier_factor.py    # trajnim + CLI për Local Outlier Factor
 └── one_class_svm.py          # trajnim + CLI për One-Class SVM
 train_anomaly.py              # hyrje e shkurtër; zgjedh metodën me --method
-models/
-├── isolation_forest/         # artefaktet e IF pas --save
-│   ├── isolation_forest.joblib
-│   ├── standard_scaler.joblib
-│   └── feature_columns.joblib
-├── local_outlier_factor/     # artefaktet e LOF pas --save
-    ├── local_outlier_factor.joblib
-    ├── standard_scaler.joblib
-    └── feature_columns.joblib
-└── one_class_svm/            # artefaktet e OCSVM pas --save
-    ├── one_class_svm.joblib
-    ├── standard_scaler.joblib
-    └── feature_columns.joblib
 ```
 
 ### 7.1 Përgatitja e përbashkët
@@ -480,13 +467,6 @@ Parametrat kryesorë:
 * `contamination = 0.05`
 * `n_neighbors = 20`
 
-Daljet e ruajtura:
-
-* `models/local_outlier_factor/local_outlier_factor.joblib`
-* `models/local_outlier_factor/standard_scaler.joblib`
-* `models/local_outlier_factor/feature_columns.joblib`
-* `processedfiles/local_outlier_factor_results.csv`
-* `processedfiles/local_outlier_factor_anomalies_only.csv`
 
 ### 7.4 Trajnimi me One-Class SVM
 
@@ -515,10 +495,41 @@ Parametrat kryesorë:
 
 Nëse do të eksperimentosh, mund ta çaktivizosh me `--use-all-data`, por versioni default është më i përshtatshëm për këtë problem.
 
-Daljet e ruajtura:
 
-* `models/one_class_svm/one_class_svm.joblib`
-* `models/one_class_svm/standard_scaler.joblib`
-* `models/one_class_svm/feature_columns.joblib`
-* `processedfiles/one_class_svm_results.csv`
-* `processedfiles/one_class_svm_anomalies_only.csv`
+### 7.5 Si ekzekutohen të tre algoritmet
+
+Përmes wrapper-it:
+
+```bash
+python train_anomaly.py --method isolation_forest --save --export-results
+python train_anomaly.py --method local_outlier_factor --save --export-results
+python train_anomaly.py --method one_class_svm --save --export-results
+```
+
+Direkt nga moduli:
+
+```bash
+python -m anomaly_models.isolation_forest --save --export-results
+python -m anomaly_models.local_outlier_factor --save --export-results
+python -m anomaly_models.one_class_svm --save --export-results
+```
+
+### 7.6 Tabela krahasuese e Fazës 2
+
+| Algoritmi | Parametrat kryesorë | Anomaly count | Normal count | Crosstab (y=0 / y=1) |
+|---|---|---:|---:|---|
+| Isolation Forest | `contamination=0.05`, `n_estimators=100` | 500 | 9500 | `0 -> -1:171, 1:9288` ; `1 -> -1:329, 1:212` |
+| Local Outlier Factor | `contamination=0.05`, `n_neighbors=20` | 417 | 9583 | `0 -> -1:376, 1:9083` ; `1 -> -1:41, 1:500` |
+| One-Class SVM | `nu=0.05`, `kernel=rbf`, `gamma=scale`, `train_on_normal_only=true` | 1011 | 8989 | `0 -> -1:470, 1:8989` ; `1 -> -1:541, 1:0` |
+
+### 7.7 Rezultatet e ruajtura
+
+- `processedfiles/isolation_forest_results.csv`
+- `processedfiles/isolation_forest_anomalies_only.csv`
+- `processedfiles/local_outlier_factor_results.csv`
+- `processedfiles/local_outlier_factor_anomalies_only.csv`
+- `processedfiles/one_class_svm_results.csv`
+- `processedfiles/one_class_svm_anomalies_only.csv`
+- `models/isolation_forest/`
+- `models/local_outlier_factor/`
+- `models/one_class_svm/`

@@ -104,7 +104,7 @@ def main() -> None:
     model, scaler, preds = train_and_predict(X, args.contamination, args.n_neighbors)
     ct = pd.crosstab(y, preds, rownames=["y"], colnames=["pred"])
 
-    print("\n--- Local Outlier Factor (modeli final) ---")
+    print("\n--- Local Outlier Factor ---")
     print("contamination:", args.contamination)
     print("n_neighbors:", args.n_neighbors)
     print("Anomaly count (pred == -1):", int(np.sum(preds == -1)))

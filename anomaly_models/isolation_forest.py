@@ -111,7 +111,7 @@ def main() -> None:
     )
     ct = pd.crosstab(y, preds, rownames=["y"], colnames=["pred"])
 
-    print("\n--- Isolation Forest (modeli final) ---")
+    print("\n--- Isolation Forest ---")
     print("contamination:", args.contamination)
     print("n_estimators:", args.n_estimators)
     print("Anomaly count (pred == -1):", int(np.sum(preds == -1)))
