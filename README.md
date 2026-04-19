@@ -269,6 +269,16 @@ processedfiles/ml_ready.csv
 processedfiles/label_mappings.txt
 ```
 
+| Metrika | `dataset.csv` (origjinali) | `processedfiles/ml_ready.csv` | Ndryshimi |
+| --- | ---: | ---: | ---: |
+| Rreshta | 10,000 | 10,000 |
+| Features / kolona | 50 | 14 |
+| Rreshta me të paktën një missing value | 9,908 | 0 |
+| Kolona numerike | 2 | 14 | +12 |
+| Kolona tekstuale / kategorike | 46 | 0 |
+
+> `ml_ready.csv` ruan të njëjtin numër rreshtash, por e kthen dataset-in në formë të gatshme për machine learning duke hequr missing values dhe duke e reduktuar në vetëm kolona numerike.
+
 Ky dataset:
 - është i pastruar,
 - ka missing values të trajtuara,
