@@ -530,3 +530,58 @@ python -m anomaly_models.one_class_svm --save --export-results
 - `models/isolation_forest/`
 - `models/local_outlier_factor/`
 - `models/one_class_svm/`
+
+### 7.8 Trajnimi me Elliptic Envelope
+
+Në këtë fazë u shtua edhe algoritmi **Elliptic Envelope** për anomaly detection mbi dataset-in e përpunuar.
+
+Elliptic Envelope është një model **jo-supervised** që bazohet në kovariancën robuste (Minimum Covariance Determinant). Ky algoritëm supozon që të dhënat normale ndjekin një **shpërndarje Gaussiane shumëdimensionale** dhe ndërton një kufi eliptik rreth tyre. Pikat që bien jashtë kësaj zone klasifikohen si anomali.
+
+Kjo qasje është e ndryshme nga modelet e tjera të përdorura në projekt:
+- **Isolation Forest** bazohet në pemë vendimmarrëse
+- **LOF** bazohet në dendësinë lokale të fqinjëve
+- **One-Class SVM** bazohet në kufirin e SVM-it
+
+Ndërsa **Elliptic Envelope** bazohet në shpërndarjen statistikore të të dhënave, duke e bërë të përshtatshëm për rastet kur të dhënat normale kanë strukturë afërsisht Gaussiane.
+
+Trajnimi mund të bëhet me:
+
+```bash
+python train_anomaly.py --method elliptic_envelope --save --export-results
+```
+
+ose direkt:
+
+```bash
+python -m anomaly_models.elliptic_envelope --save --export-results
+```
+
+Parametrat kryesorë:
+
+* `contamination = 0.05`
+* `support_fraction = automatic` (llogaritet automatikisht nga algoritmi)
+* `random_state = 42`
+
+#### Rezultati final
+
+* `anomaly count = 500`
+* `normal count = 9500`
+
+Crosstab:
+
+```
+pred   -1     1
+y
+0     291  9168
+1     209   332
+```
+
+Nga rezultatet vërehet se modeli ka identifikuar 209 nga 541 rastet `forbid` si anomali, duke kapur rreth 39% të rasteve të pazakonta.
+
+Daljet e ruajtura:
+
+* `models/elliptic_envelope/elliptic_envelope.joblib`
+* `models/elliptic_envelope/standard_scaler.joblib`
+* `models/elliptic_envelope/feature_columns.joblib`
+* `processedfiles/elliptic_envelope_results.csv`
+* `processedfiles/elliptic_envelope_anomalies_only.csv`
