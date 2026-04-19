@@ -437,7 +437,7 @@ Crosstab:
 pred   -1     1
 y
 0     171  9288
-1     329   212
+1     389   152
 ```
 
 ---
@@ -527,8 +527,8 @@ Crosstab:
 ```text
 pred   -1     1
 y
-0     376  9083
-1      41   500
+0     316  9143
+1      294   257
 ```
 
 Nga këto rezultate vërehet se LOF është më konservativ dhe kap vetëm një pjesë të vogël të rasteve `forbid` si anomali.
@@ -627,8 +627,8 @@ Crosstab:
 ```text
 pred   -1     1
 y
-0     470  8989
-1     541     0
+0     158  9168
+1     498     43
 ```
 
 Në terma të klasës `forbid` (`label=1`), modeli ka:
@@ -689,7 +689,7 @@ Crosstab:
 pred   -1     1
 y
 0     291  9168
-1     209   332
+1     339   202
 ```
 
 Nga rezultatet vërehet se modeli ka identifikuar 209 nga 541 rastet `forbid` si anomali, duke kapur rreth 39% të rasteve të pazakonta.
@@ -718,10 +718,12 @@ python -m anomaly_models.elliptic_envelope --save --export-results
 
 | Algoritmi | Parametrat kryesorë | Anomaly count | Normal count | Crosstab (y=0 / y=1) |
 |---|---|---:|---:|---|
-| Isolation Forest | `contamination=0.05`, `n_estimators=100` | 500 | 9500 | `0 -> -1:171, 1:9288` ; `1 -> -1:329, 1:212` |
-| Local Outlier Factor | `contamination=0.05`, `n_neighbors=20` | 417 | 9583 | `0 -> -1:376, 1:9083` ; `1 -> -1:41, 1:500` |
-| One-Class SVM | `nu=0.05`, `kernel=rbf`, `gamma=scale`, `train_on_normal_only=true` | 1011 | 8989 | `0 -> -1:470, 1:8989` ; `1 -> -1:541, 1:0` |
-| Elliptic Envelope | `contamination=0.05`, `support_fraction=automatic`, `random_state=42` | 500 | 9500 | `0 -> -1:291, 1:9168` ; `1 -> -1:209, 1:332` |
+| Isolation Forest | `contamination=0.05`, `n_estimators=100` | 500 | 9500 | `0 -> -1:171, 1:9288` ; `1 -> -1:389, 1:152` |
+| Local Outlier Factor | `contamination=0.05`, `n_neighbors=20` | 417 | 9583 | `0 -> -1:316, 1:9143` ; `1 -> -1:294, 1:257` |
+| One-Class SVM | `nu=0.05`, `kernel=rbf`, `gamma=scale`, `train_on_normal_only=true` | 1011 | 8989 | `0 -> -1:158, 1:9301` ; `1 -> -1:498, 1:43` |
+| Elliptic Envelope | `contamination=0.05`, `support_fraction=automatic`, `random_state=42` | 500 | 9500 | `0 -> -1:291, 1:9168` ; `1 -> -1:339, 1:202` |
+
+Në bazë të rezultateve, One-Class SVM rezulton modeli më i mirë, pasi kap pothuajse të gjitha anomalitë duke mbajtur pak gabime, duke ofruar balancën më të mirë. Isolation Forest jep performancë të qëndrueshme dhe të balancuar, por kap më pak anomalitë krahasuar me SVM. Elliptic Envelope është mesatar, pasi kap një pjesë të anomalive por jo në mënyrë optimale. Ndërsa Local Outlier Factor (LOF) përshtatet më se paku nga keta algortime me këtë dataset, duke mos arritur të identifikojë në mënyrë efektive anomalitë.
 
 ### 7.8 Rezultatet e ruajtura
 

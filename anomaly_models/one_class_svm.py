@@ -97,7 +97,7 @@ def main() -> None:
         default=default_ml_ready_path(),
         help="Rruga te ml_ready.csv",
     )
-    p.add_argument("--nu", type=float, default=0.05)
+    p.add_argument("--nu", type=float, default=0.02)
     p.add_argument("--kernel", type=str, default="rbf")
     p.add_argument("--gamma", type=str, default="scale")
     p.add_argument(
