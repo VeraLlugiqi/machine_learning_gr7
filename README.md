@@ -484,6 +484,71 @@ Parametrat kryesorë:
 * `contamination = 0.05`
 * `n_neighbors = 20`
 
+---
+
+#### Trajnimi i modelit
+
+```python
+from sklearn.neighbors import LocalOutlierFactor
+
+model = LocalOutlierFactor(
+    n_neighbors=20,
+    contamination=0.05,
+    novelty=True,
+)
+
+model.fit(X_scaled)
+preds = model.predict(X_scaled)
+```
+
+Në rezultatet e modelit:
+
+* `1` përfaqëson raste normale
+* `-1` përfaqëson anomalitë
+
+---
+
+#### Vlerësimi i rezultateve
+
+```python
+ct = pd.crosstab(y, preds, rownames=["y"], colnames=["pred"])
+print(ct)
+print("Anomaly count (pred == -1):", int(np.sum(preds == -1)))
+print("Normal count (pred == 1):", int(np.sum(preds == 1)))
+```
+
+Rezultati final:
+
+* `anomaly count = 417`
+* `normal count = 9583`
+
+Crosstab:
+
+```text
+pred   -1     1
+y
+0     376  9083
+1      41   500
+```
+
+Nga këto rezultate vërehet se LOF është më konservativ dhe kap vetëm një pjesë të vogël të rasteve `forbid` si anomali.
+
+Në terma të klasës `forbid` (`label=1`), rezultati është:
+
+* `precision = 0.0983`
+* `recall = 0.0758`
+* `f1-score = 0.0856`
+
+Kjo tregon se LOF funksionon, por në këtë dataset është më pak i përshtatshëm se Isolation Forest ose One-Class SVM.
+
+---
+
+#### Ruajtja e modelit
+
+```bash
+python -m anomaly_models.local_outlier_factor --save --export-results
+```
+
 
 ### 7.4 Trajnimi me One-Class SVM
 
@@ -509,6 +574,78 @@ Parametrat kryesorë:
 * `kernel = rbf`
 * `gamma = scale`
 * `train_on_normal_only = true`
+
+---
+
+#### Trajnimi i modelit
+
+```python
+from sklearn.svm import OneClassSVM
+
+if train_on_normal_only:
+    X_train = X[y == normal_label]
+else:
+    X_train = X
+
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_scaled = scaler.transform(X)
+
+model = OneClassSVM(
+    nu=0.05,
+    kernel="rbf",
+    gamma="scale",
+    cache_size=500,
+)
+
+model.fit(X_train_scaled)
+preds = model.predict(X_scaled)
+```
+
+Ky konfigurim është i qëllimshëm sepse modeli trajnohet vetëm mbi rastet normale (`allow = 0`), që është mënyra më e përshtatshme për One-Class SVM në këtë projekt.
+
+---
+
+#### Vlerësimi i rezultateve
+
+```python
+ct = pd.crosstab(y, preds, rownames=["y"], colnames=["pred"])
+print(ct)
+print("Train rows used:", int((y == 0).sum()))
+print("Anomaly count (pred == -1):", int(np.sum(preds == -1)))
+print("Normal count (pred == 1):", int(np.sum(preds == 1)))
+```
+
+Rezultati final:
+
+* `train rows used = 8989`
+* `anomaly count = 1011`
+* `normal count = 8989`
+
+Crosstab:
+
+```text
+pred   -1     1
+y
+0     470  8989
+1     541     0
+```
+
+Në terma të klasës `forbid` (`label=1`), modeli ka:
+
+* `precision = 0.5351`
+* `recall = 1.0000`
+* `f1-score = 0.6972`
+
+Kjo do të thotë se One-Class SVM kap të gjitha rastet `forbid`, por një pjesë e rasteve normale i etiketon gabimisht si anomali.
+
+---
+
+#### Ruajtja e modelit
+
+```bash
+python -m anomaly_models.one_class_svm --save --export-results
+```
 
 ### 7.5 Trajnimi me Elliptic Envelope
 
