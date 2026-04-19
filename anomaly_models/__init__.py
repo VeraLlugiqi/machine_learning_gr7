@@ -6,4 +6,5 @@ Trajnim i modeleve për anomaly detection (Faza 2).
 Modelet aktuale:
 - isolation_forest
 - local_outlier_factor
+- one_class_svm
 """

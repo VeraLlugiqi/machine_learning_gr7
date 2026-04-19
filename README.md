@@ -283,9 +283,10 @@ Ky dataset:
 
 Pas parapërpunimit, dataset-i `processedfiles/ml_ready.csv` është **numerik** dhe përfshin `timestamp_delay_s` (vonesa mes receive dhe timestamp, nga pipeline-i në `data.py`).
 
-Në këtë fazë janë të implementuara **dy** modele për anomaly detection:
+Në këtë fazë janë të implementuara **tre** modele për anomaly detection:
 1. **Isolation Forest**
 2. **Local Outlier Factor (LOF)**
+3. **One-Class SVM**
 
 #### Struktura e skedarëve (Faza 2)
 
@@ -294,15 +295,20 @@ anomaly_models/
 ├── __init__.py
 ├── common.py                 # ngarkim ml_ready, validim — përbashkët për të gjitha modelet
 ├── isolation_forest.py       # trajnim + CLI për Isolation Forest
-└── local_outlier_factor.py   # trajnim + CLI për Local Outlier Factor
+├── local_outlier_factor.py    # trajnim + CLI për Local Outlier Factor
+└── one_class_svm.py          # trajnim + CLI për One-Class SVM
 train_anomaly.py              # hyrje e shkurtër; zgjedh metodën me --method
 models/
 ├── isolation_forest/         # artefaktet e IF pas --save
 │   ├── isolation_forest.joblib
 │   ├── standard_scaler.joblib
 │   └── feature_columns.joblib
-└── local_outlier_factor/     # artefaktet e LOF pas --save
+├── local_outlier_factor/     # artefaktet e LOF pas --save
     ├── local_outlier_factor.joblib
+    ├── standard_scaler.joblib
+    └── feature_columns.joblib
+└── one_class_svm/            # artefaktet e OCSVM pas --save
+    ├── one_class_svm.joblib
     ├── standard_scaler.joblib
     └── feature_columns.joblib
 ```
@@ -481,3 +487,38 @@ Daljet e ruajtura:
 * `models/local_outlier_factor/feature_columns.joblib`
 * `processedfiles/local_outlier_factor_results.csv`
 * `processedfiles/local_outlier_factor_anomalies_only.csv`
+
+### 7.4 Trajnimi me One-Class SVM
+
+Si alternativë e tretë u shtua **One-Class SVM**, që është forma e SVM-it e përdorur për anomaly detection. Ky model mëson kufirin e rajonit normal dhe i etiketon si anomali pikat që dalin jashtë këtij kufiri.
+
+Për këtë model është më e saktë të trajnohet vetëm mbi rastet normale (`allow = 0`), sepse One-Class SVM supozohet të mësojë vetëm shpërndarjen e sjelljes normale. Kur futen edhe anomalitë në trajnim, kufiri mund të shtrembërohet dhe modeli e ka më të vështirë të dallojë `forbid`.
+
+Trajnimi mund të bëhet me:
+
+```bash
+python train_anomaly.py --method svm --save --export-results
+```
+
+ose direkt:
+
+```bash
+python -m anomaly_models.one_class_svm --save --export-results
+```
+
+Parametrat kryesorë:
+
+* `nu = 0.05`
+* `kernel = rbf`
+* `gamma = scale`
+* `train_on_normal_only = true`
+
+Nëse do të eksperimentosh, mund ta çaktivizosh me `--use-all-data`, por versioni default është më i përshtatshëm për këtë problem.
+
+Daljet e ruajtura:
+
+* `models/one_class_svm/one_class_svm.joblib`
+* `models/one_class_svm/standard_scaler.joblib`
+* `models/one_class_svm/feature_columns.joblib`
+* `processedfiles/one_class_svm_results.csv`
+* `processedfiles/one_class_svm_anomalies_only.csv`
