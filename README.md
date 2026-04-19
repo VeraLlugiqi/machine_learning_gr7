@@ -470,7 +470,7 @@ Parametrat kryesorë:
 
 ### 7.4 Trajnimi me One-Class SVM
 
-Si alternativë e tretë u shtua **One-Class SVM**, që është forma e SVM-it e përdorur për anomaly detection. Ky model mëson kufirin e rajonit normal dhe i etiketon si anomali pikat që dalin jashtë këtij kufiri.
+**One-Class SVM** është forma e SVM-it e përdorur për anomaly detection. Ky model mëson kufirin e rajonit normal dhe i etiketon si anomali pikat që dalin jashtë këtij kufiri.
 
 Për këtë model është më e saktë të trajnohet vetëm mbi rastet normale (`allow = 0`), sepse One-Class SVM supozohet të mësojë vetëm shpërndarjen e sjelljes normale. Kur futen edhe anomalitë në trajnim, kufiri mund të shtrembërohet dhe modeli e ka më të vështirë të dallojë `forbid`.
 
@@ -492,9 +492,6 @@ Parametrat kryesorë:
 * `kernel = rbf`
 * `gamma = scale`
 * `train_on_normal_only = true`
-
-Nëse do të eksperimentosh, mund ta çaktivizosh me `--use-all-data`, por versioni default është më i përshtatshëm për këtë problem.
-
 
 ### 7.5 Si ekzekutohen të tre algoritmet
 
