@@ -7,4 +7,5 @@ Modelet aktuale:
 - isolation_forest
 - local_outlier_factor
 - one_class_svm
+- elliptic_envelope
 """
