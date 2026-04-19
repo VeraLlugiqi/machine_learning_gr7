@@ -283,10 +283,11 @@ Ky dataset:
 
 Pas parapërpunimit, dataset-i `processedfiles/ml_ready.csv` është **numerik** dhe përfshin `timestamp_delay_s` (vonesa mes receive dhe timestamp, nga pipeline-i në `data.py`).
 
-Në këtë fazë janë të implementuara **tre** modele për anomaly detection:
+Në këtë fazë janë të implementuara **katër** modele për anomaly detection:
 1. **Isolation Forest**
 2. **Local Outlier Factor (LOF)**
 3. **One-Class SVM**
+4. **Elliptic Envelope**
 
 #### Struktura e skedarëve (Faza 2)
 
@@ -295,9 +296,15 @@ anomaly_models/
 ├── __init__.py
 ├── common.py                 # ngarkim ml_ready, validim — përbashkët për të gjitha modelet
 ├── isolation_forest.py       # trajnim + CLI për Isolation Forest
-├── local_outlier_factor.py    # trajnim + CLI për Local Outlier Factor
-└── one_class_svm.py          # trajnim + CLI për One-Class SVM
+├── local_outlier_factor.py   # trajnim + CLI për Local Outlier Factor
+├── one_class_svm.py          # trajnim + CLI për One-Class SVM
+└── elliptic_envelope.py      # trajnim + CLI për Elliptic Envelope
 train_anomaly.py              # hyrje e shkurtër; zgjedh metodën me --method
+models/
+├── isolation_forest/
+├── local_outlier_factor/
+├── one_class_svm/
+└── elliptic_envelope/
 ```
 
 ### 7.1 Përgatitja e përbashkët
@@ -493,45 +500,7 @@ Parametrat kryesorë:
 * `gamma = scale`
 * `train_on_normal_only = true`
 
-### 7.5 Si ekzekutohen të tre algoritmet
-
-Përmes wrapper-it:
-
-```bash
-python train_anomaly.py --method isolation_forest --save --export-results
-python train_anomaly.py --method local_outlier_factor --save --export-results
-python train_anomaly.py --method one_class_svm --save --export-results
-```
-
-Direkt nga moduli:
-
-```bash
-python -m anomaly_models.isolation_forest --save --export-results
-python -m anomaly_models.local_outlier_factor --save --export-results
-python -m anomaly_models.one_class_svm --save --export-results
-```
-
-### 7.6 Tabela krahasuese e Fazës 2
-
-| Algoritmi | Parametrat kryesorë | Anomaly count | Normal count | Crosstab (y=0 / y=1) |
-|---|---|---:|---:|---|
-| Isolation Forest | `contamination=0.05`, `n_estimators=100` | 500 | 9500 | `0 -> -1:171, 1:9288` ; `1 -> -1:329, 1:212` |
-| Local Outlier Factor | `contamination=0.05`, `n_neighbors=20` | 417 | 9583 | `0 -> -1:376, 1:9083` ; `1 -> -1:41, 1:500` |
-| One-Class SVM | `nu=0.05`, `kernel=rbf`, `gamma=scale`, `train_on_normal_only=true` | 1011 | 8989 | `0 -> -1:470, 1:8989` ; `1 -> -1:541, 1:0` |
-
-### 7.7 Rezultatet e ruajtura
-
-- `processedfiles/isolation_forest_results.csv`
-- `processedfiles/isolation_forest_anomalies_only.csv`
-- `processedfiles/local_outlier_factor_results.csv`
-- `processedfiles/local_outlier_factor_anomalies_only.csv`
-- `processedfiles/one_class_svm_results.csv`
-- `processedfiles/one_class_svm_anomalies_only.csv`
-- `models/isolation_forest/`
-- `models/local_outlier_factor/`
-- `models/one_class_svm/`
-
-### 7.8 Trajnimi me Elliptic Envelope
+### 7.5 Trajnimi me Elliptic Envelope
 
 Në këtë fazë u shtua edhe algoritmi **Elliptic Envelope** për anomaly detection mbi dataset-in e përpunuar.
 
@@ -578,10 +547,46 @@ y
 
 Nga rezultatet vërehet se modeli ka identifikuar 209 nga 541 rastet `forbid` si anomali, duke kapur rreth 39% të rasteve të pazakonta.
 
-Daljet e ruajtura:
+### 7.6 Si ekzekutohen të katër algoritmet
 
-* `models/elliptic_envelope/elliptic_envelope.joblib`
-* `models/elliptic_envelope/standard_scaler.joblib`
-* `models/elliptic_envelope/feature_columns.joblib`
-* `processedfiles/elliptic_envelope_results.csv`
-* `processedfiles/elliptic_envelope_anomalies_only.csv`
+Përmes wrapper-it:
+
+```bash
+python train_anomaly.py --method isolation_forest --save --export-results
+python train_anomaly.py --method local_outlier_factor --save --export-results
+python train_anomaly.py --method one_class_svm --save --export-results
+python train_anomaly.py --method elliptic_envelope --save --export-results
+```
+
+Direkt nga moduli:
+
+```bash
+python -m anomaly_models.isolation_forest --save --export-results
+python -m anomaly_models.local_outlier_factor --save --export-results
+python -m anomaly_models.one_class_svm --save --export-results
+python -m anomaly_models.elliptic_envelope --save --export-results
+```
+
+### 7.7 Tabela krahasuese e Fazës 2
+
+| Algoritmi | Parametrat kryesorë | Anomaly count | Normal count | Crosstab (y=0 / y=1) |
+|---|---|---:|---:|---|
+| Isolation Forest | `contamination=0.05`, `n_estimators=100` | 500 | 9500 | `0 -> -1:171, 1:9288` ; `1 -> -1:329, 1:212` |
+| Local Outlier Factor | `contamination=0.05`, `n_neighbors=20` | 417 | 9583 | `0 -> -1:376, 1:9083` ; `1 -> -1:41, 1:500` |
+| One-Class SVM | `nu=0.05`, `kernel=rbf`, `gamma=scale`, `train_on_normal_only=true` | 1011 | 8989 | `0 -> -1:470, 1:8989` ; `1 -> -1:541, 1:0` |
+| Elliptic Envelope | `contamination=0.05`, `support_fraction=automatic`, `random_state=42` | 500 | 9500 | `0 -> -1:291, 1:9168` ; `1 -> -1:209, 1:332` |
+
+### 7.8 Rezultatet e ruajtura
+
+- `processedfiles/isolation_forest_results.csv`
+- `processedfiles/isolation_forest_anomalies_only.csv`
+- `processedfiles/local_outlier_factor_results.csv`
+- `processedfiles/local_outlier_factor_anomalies_only.csv`
+- `processedfiles/one_class_svm_results.csv`
+- `processedfiles/one_class_svm_anomalies_only.csv`
+- `processedfiles/elliptic_envelope_results.csv`
+- `processedfiles/elliptic_envelope_anomalies_only.csv`
+- `models/isolation_forest/`
+- `models/local_outlier_factor/`
+- `models/one_class_svm/`
+- `models/elliptic_envelope/`
