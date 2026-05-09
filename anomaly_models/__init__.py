@@ -8,4 +8,5 @@ Modelet aktuale:
 - local_outlier_factor
 - one_class_svm
 - elliptic_envelope
+- model_improvement
 """
