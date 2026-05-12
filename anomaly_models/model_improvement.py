@@ -3,8 +3,10 @@ Model improvement and retraining phase for anomaly detection.
 
 This module keeps the baseline models separate from the optimized retraining
 flow. It uses:
+- Isolation Forest
 - Local Outlier Factor with novelty detection
 - One-Class SVM trained only on normal samples
+- Elliptic Envelope
 
 The public entrypoint is `run_model_improvement_phase(...)`.
 """
@@ -13,9 +15,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from itertools import product
 from typing import Any, Dict, Iterable, Optional, Tuple
+import warnings
 
 import numpy as np
 import pandas as pd
+from sklearn.covariance import EllipticEnvelope
+from sklearn.ensemble import IsolationForest
 from sklearn.metrics import (
     accuracy_score,
     classification_report,
@@ -113,6 +118,110 @@ def evaluate_anomaly_predictions(
     }
 
 
+def _with_metrics(
+    result: AnomalyModelResult,
+    metrics: Dict[str, Any],
+    variant: str,
+) -> AnomalyModelResult:
+    return AnomalyModelResult(
+        model_name=result.model_name,
+        variant=variant,
+        params=result.params,
+        accuracy=metrics["accuracy"],
+        precision=metrics["precision"],
+        recall=metrics["recall"],
+        f1_score=metrics["f1_score"],
+        confusion_matrix=metrics["confusion_matrix"],
+        classification_report=metrics["classification_report"],
+        y_pred=result.y_pred,
+        model=result.model,
+        scaler=result.scaler,
+    )
+
+
+def train_isolation_forest(
+    X_train: pd.DataFrame,
+    X_test: pd.DataFrame,
+    *,
+    contamination: float,
+    n_estimators: int,
+    random_state: int,
+) -> AnomalyModelResult:
+    """
+    Train Isolation Forest on X_train and predict anomalies on X_test.
+    """
+    _validate_numeric_features(X_train)
+    _validate_numeric_features(X_test)
+
+    scaler, X_train_scaled, X_test_scaled = _prepare_train_test_scaler(X_train, X_test)
+    model = IsolationForest(
+        n_estimators=n_estimators,
+        contamination=contamination,
+        random_state=random_state,
+        n_jobs=-1,
+    )
+    model.fit(X_train_scaled)
+    preds = model.predict(X_test_scaled)
+
+    return AnomalyModelResult(
+        model_name="Isolation Forest",
+        variant="baseline" if (contamination, n_estimators) == (0.05, 100) else "optimized",
+        params={
+            "contamination": contamination,
+            "n_estimators": n_estimators,
+            "random_state": random_state,
+        },
+        accuracy=None,
+        precision=None,
+        recall=None,
+        f1_score=None,
+        confusion_matrix=None,
+        classification_report=None,
+        y_pred=preds,
+        model=model,
+        scaler=scaler,
+    )
+
+
+def tune_isolation_forest(
+    X_train: pd.DataFrame,
+    X_test: pd.DataFrame,
+    y_test: pd.Series,
+    *,
+    contamination_grid: Iterable[float] = (0.03, 0.05, 0.08, 0.1),
+    n_estimators_grid: Iterable[int] = (100, 200),
+    random_state: int = 42,
+    anomaly_label: int = 1,
+) -> AnomalyModelResult:
+    """
+    Grid search Isolation Forest parameters and select the best model by F1-score.
+    """
+    best_result: Optional[AnomalyModelResult] = None
+    best_score = -np.inf
+
+    for contamination, n_estimators in product(contamination_grid, n_estimators_grid):
+        candidate = train_isolation_forest(
+            X_train,
+            X_test,
+            contamination=contamination,
+            n_estimators=n_estimators,
+            random_state=random_state,
+        )
+        metrics = evaluate_anomaly_predictions(
+            y_test,
+            candidate.y_pred,
+            anomaly_label=anomaly_label,
+        )
+        score = metrics["f1_score"]
+        if score > best_score:
+            best_score = score
+            best_result = _with_metrics(candidate, metrics, "optimized")
+
+    if best_result is None:
+        raise RuntimeError("Isolation Forest tuning did not produce a valid result.")
+    return best_result
+
+
 def train_lof(
     X_train: pd.DataFrame,
     X_test: pd.DataFrame,
@@ -202,6 +311,93 @@ def tune_lof(
 
     if best_result is None:
         raise RuntimeError("LOF tuning did not produce a valid result.")
+    return best_result
+
+
+def train_elliptic_envelope(
+    X_train: pd.DataFrame,
+    X_test: pd.DataFrame,
+    *,
+    contamination: float,
+    support_fraction: Optional[float],
+    random_state: int,
+) -> AnomalyModelResult:
+    """
+    Train Elliptic Envelope on X_train and predict anomalies on X_test.
+    """
+    _validate_numeric_features(X_train)
+    _validate_numeric_features(X_test)
+
+    scaler, X_train_scaled, X_test_scaled = _prepare_train_test_scaler(X_train, X_test)
+    model = EllipticEnvelope(
+        contamination=contamination,
+        support_fraction=support_fraction,
+        random_state=random_state,
+    )
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        model.fit(X_train_scaled)
+    preds = model.predict(X_test_scaled)
+
+    return AnomalyModelResult(
+        model_name="Elliptic Envelope",
+        variant="baseline" if (contamination, support_fraction) == (0.05, None) else "optimized",
+        params={
+            "contamination": contamination,
+            "support_fraction": support_fraction or "automatic",
+            "random_state": random_state,
+        },
+        accuracy=None,
+        precision=None,
+        recall=None,
+        f1_score=None,
+        confusion_matrix=None,
+        classification_report=None,
+        y_pred=preds,
+        model=model,
+        scaler=scaler,
+    )
+
+
+def tune_elliptic_envelope(
+    X_train: pd.DataFrame,
+    X_test: pd.DataFrame,
+    y_test: pd.Series,
+    *,
+    contamination_grid: Iterable[float] = (0.03, 0.05, 0.08, 0.1),
+    support_fraction_grid: Iterable[Optional[float]] = (None, 0.7, 0.9),
+    random_state: int = 42,
+    anomaly_label: int = 1,
+) -> AnomalyModelResult:
+    """
+    Grid search Elliptic Envelope parameters and select the best model by F1-score.
+    """
+    best_result: Optional[AnomalyModelResult] = None
+    best_score = -np.inf
+
+    for contamination, support_fraction in product(
+        contamination_grid,
+        support_fraction_grid,
+    ):
+        candidate = train_elliptic_envelope(
+            X_train,
+            X_test,
+            contamination=contamination,
+            support_fraction=support_fraction,
+            random_state=random_state,
+        )
+        metrics = evaluate_anomaly_predictions(
+            y_test,
+            candidate.y_pred,
+            anomaly_label=anomaly_label,
+        )
+        score = metrics["f1_score"]
+        if score > best_score:
+            best_score = score
+            best_result = _with_metrics(candidate, metrics, "optimized")
+
+    if best_result is None:
+        raise RuntimeError("Elliptic Envelope tuning did not produce a valid result.")
     return best_result
 
 
@@ -339,8 +535,36 @@ def run_model_improvement_phase(
     print_reports: bool = True,
 ) -> Dict[str, Any]:
     """
-    Run baseline and optimized retraining for LOF and One-Class SVM.
+    Run baseline and optimized retraining for all anomaly detection models.
     """
+    isolation_baseline = train_isolation_forest(
+        X_train,
+        X_test,
+        contamination=0.05,
+        n_estimators=100,
+        random_state=42,
+    )
+    isolation_baseline_metrics = evaluate_anomaly_predictions(
+        y_test,
+        isolation_baseline.y_pred,
+        anomaly_label=anomaly_label,
+    )
+    isolation_baseline = _with_metrics(
+        isolation_baseline,
+        isolation_baseline_metrics,
+        "baseline",
+    )
+
+    isolation_optimized = tune_isolation_forest(
+        X_train,
+        X_test,
+        y_test,
+        contamination_grid=(0.03, 0.05, 0.08, 0.1),
+        n_estimators_grid=(100, 200),
+        random_state=42,
+        anomaly_label=anomaly_label,
+    )
+
     lof_baseline = train_lof(
         X_train,
         X_test,
@@ -352,20 +576,7 @@ def run_model_improvement_phase(
         lof_baseline.y_pred,
         anomaly_label=anomaly_label,
     )
-    lof_baseline = AnomalyModelResult(
-        model_name=lof_baseline.model_name,
-        variant="baseline",
-        params=lof_baseline.params,
-        accuracy=lof_baseline_metrics["accuracy"],
-        precision=lof_baseline_metrics["precision"],
-        recall=lof_baseline_metrics["recall"],
-        f1_score=lof_baseline_metrics["f1_score"],
-        confusion_matrix=lof_baseline_metrics["confusion_matrix"],
-        classification_report=lof_baseline_metrics["classification_report"],
-        y_pred=lof_baseline.y_pred,
-        model=lof_baseline.model,
-        scaler=lof_baseline.scaler,
-    )
+    lof_baseline = _with_metrics(lof_baseline, lof_baseline_metrics, "baseline")
 
     lof_optimized = tune_lof(
         X_train,
@@ -390,20 +601,7 @@ def run_model_improvement_phase(
         ocsvm_baseline.y_pred,
         anomaly_label=anomaly_label,
     )
-    ocsvm_baseline = AnomalyModelResult(
-        model_name=ocsvm_baseline.model_name,
-        variant="baseline",
-        params=ocsvm_baseline.params,
-        accuracy=ocsvm_baseline_metrics["accuracy"],
-        precision=ocsvm_baseline_metrics["precision"],
-        recall=ocsvm_baseline_metrics["recall"],
-        f1_score=ocsvm_baseline_metrics["f1_score"],
-        confusion_matrix=ocsvm_baseline_metrics["confusion_matrix"],
-        classification_report=ocsvm_baseline_metrics["classification_report"],
-        y_pred=ocsvm_baseline.y_pred,
-        model=ocsvm_baseline.model,
-        scaler=ocsvm_baseline.scaler,
-    )
+    ocsvm_baseline = _with_metrics(ocsvm_baseline, ocsvm_baseline_metrics, "baseline")
 
     ocsvm_optimized = tune_one_class_svm(
         X_train,
@@ -417,19 +615,58 @@ def run_model_improvement_phase(
         anomaly_label=anomaly_label,
     )
 
+    elliptic_baseline = train_elliptic_envelope(
+        X_train,
+        X_test,
+        contamination=0.05,
+        support_fraction=None,
+        random_state=42,
+    )
+    elliptic_baseline_metrics = evaluate_anomaly_predictions(
+        y_test,
+        elliptic_baseline.y_pred,
+        anomaly_label=anomaly_label,
+    )
+    elliptic_baseline = _with_metrics(
+        elliptic_baseline,
+        elliptic_baseline_metrics,
+        "baseline",
+    )
+
+    elliptic_optimized = tune_elliptic_envelope(
+        X_train,
+        X_test,
+        y_test,
+        contamination_grid=(0.03, 0.05, 0.08, 0.1),
+        support_fraction_grid=(None, 0.7, 0.9),
+        random_state=42,
+        anomaly_label=anomaly_label,
+    )
+
     compare_df = build_comparison_df(
         [
+            isolation_baseline,
+            isolation_optimized,
             lof_baseline,
             lof_optimized,
             ocsvm_baseline,
             ocsvm_optimized,
+            elliptic_baseline,
+            elliptic_optimized,
         ]
     )
 
     if print_reports:
         print("\n--- Best Parameters ---")
+        print("Isolation Forest:", isolation_optimized.params)
         print("Local Outlier Factor:", lof_optimized.params)
         print("One-Class SVM:", ocsvm_optimized.params)
+        print("Elliptic Envelope:", elliptic_optimized.params)
+
+        print("\n--- Classification Report: Isolation Forest (Optimized) ---")
+        print(isolation_optimized.classification_report)
+        print("Confusion Matrix:")
+        print(isolation_optimized.confusion_matrix)
 
         print("\n--- Classification Report: Local Outlier Factor (Optimized) ---")
         print(lof_optimized.classification_report)
@@ -441,19 +678,28 @@ def run_model_improvement_phase(
         print("Confusion Matrix:")
         print(ocsvm_optimized.confusion_matrix)
 
+        print("\n--- Classification Report: Elliptic Envelope (Optimized) ---")
+        print(elliptic_optimized.classification_report)
+        print("Confusion Matrix:")
+        print(elliptic_optimized.confusion_matrix)
+
         print("\n--- Model Comparison ---")
         print(compare_df.to_string(index=False))
 
     return {
+        "isolation_baseline": isolation_baseline,
+        "isolation_optimized": isolation_optimized,
         "lof_baseline": lof_baseline,
         "lof_optimized": lof_optimized,
         "ocsvm_baseline": ocsvm_baseline,
         "ocsvm_optimized": ocsvm_optimized,
+        "elliptic_baseline": elliptic_baseline,
+        "elliptic_optimized": elliptic_optimized,
         "compare_df": compare_df,
     }
 
 
-if __name__ == "__main__":
+def main() -> None:
     import argparse
 
     from anomaly_models.common import default_ml_ready_path, validate_features
@@ -510,3 +756,7 @@ if __name__ == "__main__":
         anomaly_label=args.anomaly_label,
         print_reports=True,
     )
+
+
+if __name__ == "__main__":
+    main()

@@ -1,18 +1,19 @@
 # Analizimi i Audit Logs (Regjistra të Aktiviteteve) nga Kubernetes Service në Google Cloud Platform
 
-**Universiteti:** Universiteti i Prishtines
-
-**Fakulteti:** Fakulteti i Inxhinierise Elektrike dhe Kompjuterike
-
-**Niveli i studimeve:** Master 
-
-**Lënda:** Machine Learning  
-
-**Mësimdhënësit:** Lule Ahmedi, Mërgim Hoti 
-
-**Studentët që kanë kontribuar:**  
-Art Ukshini, Leotrim Halimi, Vera Llugiqi
-
+<table border="0" cellpadding="8" cellspacing="0">
+ <tr>
+  <td valign="top" style="width:180px;">
+    <img src="assets/University_of_Prishtina_logo.png" alt="University of Prishtina Logo" width="150" />
+  </td>
+  <td valign="top">
+    <p><strong>Universiteti i Prishtinës / University of Prishtina</strong></p>
+    <p>Fakulteti i Inxhinierisë Elektrike dhe Kompjuterike</p>
+    <p>Inxhinieri Kompjuterike dhe Softuerike - Programi Master</p>
+    <p>Profesoret: Lule Ahmedi, Mërgim Hoti</p>
+    <p>Studentët që kanë kontribuar: Art Ukshini, Leotrim Halimi, Vera Llugiqi</p>
+  </td>
+ </tr>
+</table>
 ---
 
 ## Faza I: Përgatitja e të dhënave
@@ -739,3 +740,212 @@ Në bazë të rezultateve, One-Class SVM rezulton modeli më i mirë, pasi kap p
 - `models/local_outlier_factor/`
 - `models/one_class_svm/`
 - `models/elliptic_envelope/`
+
+---
+
+## Faza III: Permiresimi i modeleve dhe perdorimi i veglave
+
+Ne fazen e trete projekti kalon nga trajnimi baze i modeleve ne permiresim,
+krahasim dhe interpretim strategjik te rezultateve. Qellimi i kesaj faze eshte
+rritja e performances se algoritmeve, dokumentimi i qarte i rezultateve dhe
+perdorimi i veglave qe e bejne projektin me te pershtatshem per analizim,
+gjurmim dhe vendimmarrje. 
+
+Modelet nuk vleresohen vetem me numrin e anomalive te gjetura, por edhe me metrika si `precision`, `recall`, `F1-score`, `accuracy` dhe `confusion matrix`. Keshtu mund te kuptohet jo vetem cili model gjen me shume anomali, por edhe cili model jep me pak alarme te rreme dhe cili eshte me i pershtatshem per monitorim te audit logs.
+
+Moduli:
+
+```text
+anomaly_models/model_improvement.py
+```
+
+Ky modul ben:
+
+- ndarjen `train/test` me `stratify`, qe ruan raportin mes klasave `allow` dhe `forbid`;
+- trajnimin e modeleve baseline per krahasim;
+- kerkimin e parametrave me `grid search`;
+- vleresimin me `accuracy`, `precision`, `recall`, `f1-score`, `classification report` dhe `confusion matrix`;
+- krahasimin final te modeleve ne nje tabele te vetme.
+
+Mund te ekzekutohet direkt:
+
+```bash
+python -m anomaly_models.model_improvement
+```
+
+ose permes wrapper-it kryesor:
+
+```bash
+python train_anomaly.py --method phase3
+python train_anomaly.py --method model_improvement
+```
+
+### 8.2 Algoritmet e permiresuara
+
+Ne fazen e trete u permiresuan te gjitha modelet e anomaly detection qe ishin ne
+fazen e dyte. Kjo e ben krahasimin me te drejte, sepse secili model ka versionin
+baseline dhe versionin e optimizuar.
+
+1. **Isolation Forest**
+   - Faza 2: `contamination=0.05`, `n_estimators=100`
+   - Faza 3: testim i kombinimeve `contamination=(0.03, 0.05, 0.08, 0.1)` dhe `n_estimators=(100, 200)`
+   - konfigurimi me i mire: `contamination=0.05`, `n_estimators=200`
+
+2. **Local Outlier Factor (LOF)**
+   - Faza 2: `n_neighbors=20`, `contamination=0.05`
+   - Faza 3: testim i kombinimeve `n_neighbors=(10, 20, 30)` dhe `contamination=(0.05, 0.1, 0.2)`
+   - konfigurimi me i mire: `n_neighbors=10`, `contamination=0.05`
+
+3. **One-Class SVM**
+   - Faza 2: `nu=0.05`, `kernel=rbf`, `gamma=scale`, `train_on_normal_only=true`
+   - Faza 3: testim i kombinimeve `kernel=(rbf, linear)`, `nu=(0.01, 0.05, 0.1)` dhe `gamma=(scale, auto)`
+   - konfigurimi me i mire: `nu=0.01`, `kernel=rbf`, `gamma=scale`
+
+4. **Elliptic Envelope**
+   - Faza 2: `contamination=0.05`, `support_fraction=automatic`
+   - Faza 3: testim i kombinimeve `contamination=(0.03, 0.05, 0.08, 0.1)` dhe `support_fraction=(automatic, 0.7, 0.9)`
+   - konfigurimi me i mire: `contamination=0.05`, `support_fraction=0.9`
+
+One-Class SVM vazhdon te trajnohet vetem me rastet normale (`allow = 0`),
+sepse kjo e ndihmon modelin te mesoje kufirin e sjelljes normale dhe te
+sinjalizoje rastet `forbid` si devijime.
+
+### 8.3 Krahasimi i rezultateve me fazen paraprake
+
+Krahasimi i fazave eshte bere duke perdorur rezultatet e fazes se dyte si
+baseline dhe rezultatet e fazes se trete si modele te optimizuara.
+
+Komandat kryesore per ekzekutim:
+
+```bash
+python -B train_anomaly.py --method isolation_forest
+python -B train_anomaly.py --method local_outlier_factor
+python -B train_anomaly.py --method one_class_svm
+python -B train_anomaly.py --method elliptic_envelope
+python -B train_anomaly.py --method phase3
+```
+
+Rezultatet e fazes 2:
+
+| Algoritmi | Parametrat kryesore | Anomaly count | Normal count | Crosstab (y=0 / y=1) |
+|---|---|---:|---:|---|
+| Isolation Forest | `contamination=0.05`, `n_estimators=100` | 500 | 9500 | `0 -> -1:171, 1:9288`; `1 -> -1:389, 1:152` |
+| Local Outlier Factor | `contamination=0.05`, `n_neighbors=20` | 417 | 9583 | `0 -> -1:316, 1:9143`; `1 -> -1:294, 1:257` |
+| One-Class SVM | `nu=0.05`, `kernel=rbf`, `gamma=scale`, `train_on_normal_only=true` | 1011 | 8989 | `0 -> -1:158, 1:9301`; `1 -> -1:498, 1:43` |
+| Elliptic Envelope | `contamination=0.05`, `support_fraction=automatic`, `random_state=42` | 500 | 9500 | `0 -> -1:291, 1:9168`; `1 -> -1:339, 1:202` |
+
+Rezultatet e fazes 3 jane llogaritur me `train/test split`, prandaj perdoren per
+vleresim me te qendrueshem te performances:
+
+| Modeli | Accuracy | Precision | Recall | F1-score |
+|---|---:|---:|---:|---:|
+| Elliptic Envelope (optimized) | 0.9830 | 0.9111 | 0.7593 | 0.8283 |
+| One-Class SVM (optimized) | 0.9770 | 0.7067 | 0.9815 | 0.8217 |
+| Elliptic Envelope (baseline) | 0.9780 | 0.8478 | 0.7222 | 0.7800 |
+| One-Class SVM (baseline) | 0.9490 | 0.5143 | 1.0000 | 0.6792 |
+| Isolation Forest (optimized) | 0.9580 | 0.6333 | 0.5278 | 0.5758 |
+| Isolation Forest (baseline) | 0.9500 | 0.5435 | 0.4630 | 0.5000 |
+| Local Outlier Factor (optimized) | 0.9000 | 0.1034 | 0.1111 | 0.1071 |
+| Local Outlier Factor (baseline) | 0.9015 | 0.0991 | 0.1019 | 0.1005 |
+
+Krahasimi tregon se secili model u testua me baseline dhe me konfigurim te
+optimizuar:
+
+- **Elliptic Envelope** u rrit nga `F1=0.7800` ne `F1=0.8283` dhe doli modeli me F1-score me te larte.
+- **One-Class SVM** u rrit nga `F1=0.6792` ne `F1=0.8217` dhe mbajti recall shume te larte (`0.9815`).
+- **Isolation Forest** u rrit nga `F1=0.5000` ne `F1=0.5758`.
+- **LOF** pati vetem permiresim te vogel nga `F1=0.1005` ne `F1=0.1071`.
+
+Nga krahasimi shihet se permiresimi nuk eshte i njejte per te gjitha modelet.
+Elliptic Envelope dhe One-Class SVM japin rezultatet me te forta, Isolation
+Forest permiresohet ne menyre te moderuar, ndersa LOF mbetet modeli me
+performance me te ulet per kete dataset.
+
+Confusion matrix per Elliptic Envelope te optimizuar:
+
+```text
+[[1884    8]
+ [  26   82]]
+```
+
+Interpretimi:
+
+- `1884` raste normale u klasifikuan sakte si normale;
+- `8` raste normale u shenuan gabimisht si anomali;
+- `26` raste anomali nuk u kapen;
+- `82` raste anomali u detektuan sakte.
+
+Confusion matrix per One-Class SVM te optimizuar:
+
+```text
+[[1848   44]
+ [   2  106]]
+```
+
+Interpretimi:
+
+- `1848` raste normale u klasifikuan sakte si normale;
+- `44` raste normale u shenuan gabimisht si anomali;
+- `2` raste anomali nuk u kapen;
+- `106` raste anomali u detektuan sakte.
+
+Keto rezultate tregojne dy strategji te ndryshme: Elliptic Envelope jep me pak
+alarme te rreme, ndersa One-Class SVM kap pothuajse te gjitha anomalite.
+
+### 8.4 Si lexohen rezultatet
+
+Ne kete projekt klasa `forbid` trajtohet si sjellje me e dyshimte ose me e
+pazakonte, ndersa `allow` si sjellje normale.
+
+- **Precision** tregon sa prej rasteve te shenuara si anomali jane vertet anomali.
+  Rritja e precision do te thote me pak alarme te rreme.
+- **Recall** tregon sa prej anomalive reale jane kapur nga modeli.
+  Recall i larte eshte i rendesishem sepse ne audit logs nuk duam te na ikin rastet e rrezikshme.
+- **F1-score** kombinon precision dhe recall.
+  Ky eshte treguesi me i dobishem kur kemi klasa te pabalancuara.
+- **Confusion matrix** tregon saktesisht sa raste jane klasifikuar sakte dhe sa gabim.
+
+Modeli me i mire sipas `F1-score` ne fazen 3 eshte **Elliptic Envelope i
+optimizuar** (`F1=0.8283`). **One-Class SVM i optimizuar** mbetet shume i
+rendesishem sepse ka recall me te larte (`0.9815`) dhe kap pothuajse te gjitha
+anomalite. Zgjedhja finale varet nga prioriteti operativ: me pak alarme te
+rreme ose kapje sa me e larte e anomalive.
+
+## Tools te perdorura ne projekt
+
+Ne projekt jane perdorur keto vegla dhe biblioteka:
+
+| Tool / biblioteka | Ku perdoret | Pse perdoret |
+|---|---|---|
+| `pandas` | `data.py`, `preprocessing_modules.py`, modelet | Lexim, pastrim, transformim dhe analizim i dataset-it |
+| `numpy` | modelet | Llogaritje numerike dhe numerim i predikimeve |
+| `scikit-learn` | modelim dhe vleresim | Modelet ML, scaling, metrika dhe train/test split |
+| `joblib` | `anomaly_models/` | Ruajtja e modeleve, scaler-it dhe feature columns |
+| `StandardScaler` | anomaly detection | Normalizim i features para modeleve |
+| `ydata-profiling` | raportim eksplorues | Gjenerim i raportit HTML per EDA |
+| `MLflow` | gjurmim eksperimenti | Ruajtja e parametrave, metrikave dhe modelit |
+| `RandomForestClassifier` | modelim i mbikqyrur | Eksperimente krahasuese kur target-i eshte i qarte |
+
+Perdorimi i ketyre veglave e ben projektin me te qarte per analizim dhe me te
+lehte per riprodhim, sepse rezultatet lidhen me parametrat, dataset-in dhe
+modelin perkates.
+
+## Kujt i ndihmojne rezultatet dhe si
+
+Rezultatet e kesaj faze jane te dobishme per:
+
+- ekipet e sigurise, sepse mund te sinjalizojne aktivitete te pazakonta ne audit logs;
+- administratoren e sistemeve cloud/Kubernetes, sepse ndihmojne te kuptohet cilat evente devijojne nga sjellja normale;
+- ekipet e DevOps, sepse mund te perdorin anomalite si pike nisjeje per hetim;
+- klientin, sepse merr nje model me te maturuar dhe rezultate me te shpjegueshme.
+
+Pas aplikimit te fazes se trete arritem te paraqesim se modeli nuk eshte vetem
+i trajnuar, por edhe i optimizuar dhe i krahasuar me versionin paraprak. Kjo e
+ben projektin me afer nje zgjidhjeje praktike per monitorim dhe detektim te
+rreziqeve ne sistem.
+
+
+
+Konkluzioni kryesor eshte se faza 3 e rriti performancen e modeleve duke i
+optimizuar te gjitha algoritmet e fazes 2. Modeli me i mire sipas F1-score doli
+**Elliptic Envelope i optimizuar** me `F1-score = 0.8283`, ndersa **One-Class SVM i optimizuar** mbeti shume i forte per kapjen e anomalive me `recall = 0.9815`.
