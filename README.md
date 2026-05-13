@@ -929,32 +929,6 @@ Ne projekt jane perdorur keto vegla dhe biblioteka:
 | `RandomForestClassifier` | modelim i mbikqyrur | Eksperimente krahasuese kur target-i eshte i qarte |
 
 
-Për interpretim lokal të Isolation Forest është shtuar edhe një integrim me
-**LIME**. Përdorimi bazë është:
-
-```bash
-python -m anomaly_models.isolation_forest_lime --anomaly-only
-```
-
-Ose për një rresht specifik:
-
-```bash
-python -m anomaly_models.isolation_forest_lime --row-index 123
-```
-
-Për vizualizim interaktiv të rezultateve të Isolation Forest është shtuar edhe
-**Plotly**. Kjo gjeneron një dashboard HTML me shpërndarjen e decision score,
-PCA projection dhe numrin e anomalive:
-
-```bash
-python -m anomaly_models.isolation_forest_viz
-```
-
-Perdorimi i ketyre veglave e ben projektin me te qarte per analizim dhe me te
-lehte per riprodhim, sepse rezultatet lidhen me parametrat, dataset-in dhe
-modelin perkates.
-
-
 ### MLflow
 
 MLflow përdoret në këtë projekt për të ndjekur eksperimentet gjatë trajnimit të
@@ -972,6 +946,9 @@ Forest ose kur ruhet një model i mirë për përdorim të mëvonshëm.
 Nëse dëshiron ta shohësh në kod, përdorimi kryesor është në
 `rainfall_ml_tools.py`, ku MLflow hap një run, logon parametrat dhe metrikat,
 dhe ruan modelin e trajnuar me `mlflow.sklearn.log_model(...)`.
+
+<img width="644" height="405" alt="Screenshot 2026-05-13 at 21 00 08" src="https://github.com/user-attachments/assets/7877f86d-11a0-4814-b606-03959121d5f7" />
+
 
 <img width="1222" height="452" alt="Screenshot 2026-05-13 at 20 17 42" src="https://github.com/user-attachments/assets/5cf09749-6454-4dcd-8a78-7fce84d423e4" />
 Ky dataset përmban gjithsej 10,000 vëzhgime (rreshta) dhe 14 variabla (kolona). Ai është plotësisht i pastër – nuk ka asnjë qelizë të dhënash të munguar (0% të dhëna të humbura) dhe as rreshta të dyfishuar. Kjo e bën dataset-in ideal për trajnimin e modeleve të makinerisë pa pasur nevojë për pastrim paraprak të të dhënave.
@@ -1004,4 +981,27 @@ Modelet në projet mund të gjenden në folder-in: `models` dhe në algoritmin s
 <img width="339" height="380" alt="Screenshot 2026-05-13 at 20 35 43" src="https://github.com/user-attachments/assets/cb3c9aa7-0c86-45f9-8eb2-a8e348873746" />
 
 
+### LIME
+
+LIME (Local Interpretable Model-agnostic Explanations) është një teknikë që shpjegon pse një model makinerie ka marrë një vendim të caktuar për një rresht specifik të të dhënave. Ajo ndërton një model të thjeshtë (të interpretueshëm) rreth parashikimit të atij rreshti dhe tregon se cilat tipare (variabla) kanë ndikuar më shumë në rezultat.
+
+Në këtë projekt, LIME përdoret për të kuptuar pse Isolation Forest e klasifikon një vëzhgim të caktuar si normale ose anomali. Për çdo parashikim, LIME prodhon:
+Një listë tiparesh me peshat e tyre (kontributet pozitive ose negative)
+Tregohet se cilat tipare e shtyjnë rezultatin nga njëra anë apo tjetra
+
+
+<img width="977" height="281" alt="Screenshot 2026-05-13 at 21 07 20" src="https://github.com/user-attachments/assets/3a9b4770-166d-431a-9357-6aa5fd9a1da6" />
+
+### PLOTLY
+
+Vizualizimi interaktiv me Plotly
+Plotly përdoret për të krijuar një dashboard interaktiv HTML që paraqet statistikat kryesore të modelit Isolation Forest. Ky vizualizim ofron:
+
+Histogrami i decision score – shpërndarja e rezultateve të modelit (sa afër 0 ose 1 janë vëzhgimet)
+Projeksioni PCA – ulja e dimensioneve për të parë se si grupohen normalet (blu) dhe anomalitë (kuqe) në hapësirën dy-dimensionale
+Grafiku me shtylla i parashikimeve – numri i rasteve normale kundrejt anomalive
+Kutitë e mustaqeve (box plots) – shpërndarja e rezultateve të anomalive për secilën klasë
+Dashbordi gjenerohet si një skedar .html i cili mund të hapet në çdo shfletues.
+
+<img width="1000" height="338" alt="Screenshot 2026-05-13 at 21 05 35" src="https://github.com/user-attachments/assets/85402a65-ceae-4e82-ab76-a6985ee09974" />
 
