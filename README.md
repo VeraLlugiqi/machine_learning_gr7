@@ -921,18 +921,19 @@ Ne projekt jane perdorur keto vegla dhe biblioteka:
 | Tool / biblioteka | Ku perdoret | Pse perdoret |
 |---|---|---|
 | `pandas` | `data.py`, `preprocessing_modules.py`, modelet | Lexim, pastrim, transformim dhe analizim i dataset-it |
-| `numpy` | modelet | Llogaritje numerike dhe numerim i predikimeve |
+| `numpy` | modelet | Llogaritje numerike dhe statistika |
 | `scikit-learn` | modelim dhe vleresim | Modelet ML, scaling, metrika dhe train/test split |
 | `joblib` | `anomaly_models/` | Ruajtja e modeleve, scaler-it dhe feature columns |
-| `StandardScaler` | anomaly detection | Normalizim i features para modeleve |
-| `ydata-profiling` | raportim eksplorues | Gjenerim i raportit HTML per EDA |
-| `RandomForestClassifier` | modelim i mbikqyrur | Eksperimente krahasuese kur target-i eshte i qarte |
+| `mlflow` | `rainfall_ml_tools.py` | Ndjekja dhe dokumentimi i eksperimenteve të performancës |
+| `ydata-profiling` | `rainfall_ml_tools.py` | Gjenerim i raportit HTML për EDA |
+| `lime` | `anomaly_models/isolation_forest_lime.py` | Shpjegim post-hoc i vendimeve të modelit |
+| `RandomForestClassifier` | modelim i mbikqyrur | Eksperimente krahasuese kur target-i është i qartë |
 
 
 ### MLflow
 
-MLflow përdoret në këtë projekt për të ndjekur eksperimentet gjatë trajnimit të
-modeleve. Ai regjistron:
+MLflow përdoret në këtë projekt për të ndjekur dhe dokumentuar eksperimente të
+modelimit gjatë fazës së tretë. Ai regjistron:
 
 - parametrat e modelit, si `n_estimators`, `contamination` dhe `random_state`;
 - metrikat, si `accuracy` dhe `F1-score`;
@@ -940,14 +941,26 @@ modeleve. Ai regjistron:
 - emrin e eksperimentit dhe `run_id`, që e bëjnë më të lehtë krahasimin e
   disa trajnimeve.
 
-Kjo ndihmon kur krahasohen variante të ndryshme të Isolation
-Forest ose kur ruhet një model i mirë për përdorim të mëvonshëm.
+Në fazën e tretë, MLflow ka kuptim të veçantë sepse ndihmon të krahasohen
+variante të ndryshme të parametrave dhe të dokumentohet performanca e modeleve
+optimale.
 
-Përdorimi kryesor është në `rainfall_ml_tools.py`, ku MLflow hap një run, logon parametrat dhe metrikat,
-dhe ruan modelin e trajnuar me `mlflow.sklearn.log_model(...)`.
+Përdorimi kryesor është në `rainfall_ml_tools.py`, ku MLflow hap një run, logon
+parametrat dhe metrikat, dhe ruan modelin e trajnuar me
+`mlflow.sklearn.log_model(...)`.
 
 <img width="644" height="405" alt="Screenshot 2026-05-13 at 21 00 08" src="https://github.com/user-attachments/assets/7877f86d-11a0-4814-b606-03959121d5f7" />
 
+### LIME
+
+LIME është një vegël shtesë për interpretueshmëri, e përdorur në
+`anomaly_models/isolation_forest_lime.py` për të shpjeguar pse një rresht i
+caktuar klasifikohet si normal ose anomali nga `Isolation Forest`.
+
+Ajo nuk është pjesë themelore e matjes së performancës, por është e vlefshme
+nëse dëshiron të shtosh një nivel analizë për vendimet e modelit.
+
+<img width="339" height="380" alt="Screenshot 2026-05-13 at 20 35 43" src="https://github.com/user-attachments/assets/cb3c9aa7-0c86-45f9-8eb2-a8e348873746" />
 
 Madhësia totale e dataset-it në memorie është rreth 1.1 MiB, ndërsa çdo vëzhgim mesatarisht zë 112 bytes. 
 
