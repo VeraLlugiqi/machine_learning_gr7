@@ -926,7 +926,6 @@ Ne projekt jane perdorur keto vegla dhe biblioteka:
 | `joblib` | `anomaly_models/` | Ruajtja e modeleve, scaler-it dhe feature columns |
 | `StandardScaler` | anomaly detection | Normalizim i features para modeleve |
 | `ydata-profiling` | raportim eksplorues | Gjenerim i raportit HTML per EDA |
-| `MLflow` | gjurmim eksperimenti | Ruajtja e parametrave, metrikave dhe modelit |
 | `RandomForestClassifier` | modelim i mbikqyrur | Eksperimente krahasuese kur target-i eshte i qarte |
 
 
@@ -956,9 +955,23 @@ lehte per riprodhim, sepse rezultatet lidhen me parametrat, dataset-in dhe
 modelin perkates.
 
 
-### MLFlow
+### MLflow
 
-MLflow është një mjet që përdoret për të menaxhuar dhe ndjekur procesin e zhvillimit të modeleve të machine learning. Ai përdoret për vizualizimin e rezultateve, duke treguar metrika si accuracy dhe F1-score në një ndërfaqe grafike, si dhe për krahasimin e eksperimenteve të ndryshme. Përveç kësaj, MLflow ruan parametrat dhe modelet, duke e bërë më të lehtë analizimin, organizimin dhe përzgjedhjen e modelit më të mirë.
+MLflow përdoret në këtë projekt për të ndjekur eksperimentet gjatë trajnimit të
+modeleve. Ai regjistron:
+
+- parametrat e modelit, si `n_estimators`, `contamination` dhe `random_state`;
+- metrikat, si `accuracy` dhe `F1-score`;
+- modelin e trajnuar si artifact që mund të ruhet dhe ngarkohet më vonë;
+- emrin e eksperimentit dhe `run_id`, që e bëjnë më të lehtë krahasimin e
+  disa trajnimeve.
+
+Në praktikë, kjo ndihmon kur krahasohen variante të ndryshme të Isolation
+Forest ose kur ruhet një model i mirë për përdorim të mëvonshëm.
+
+Nëse dëshiron ta shohësh në kod, përdorimi kryesor është në
+`rainfall_ml_tools.py`, ku MLflow hap një run, logon parametrat dhe metrikat,
+dhe ruan modelin e trajnuar me `mlflow.sklearn.log_model(...)`.
 
 <img width="1222" height="452" alt="Screenshot 2026-05-13 at 20 17 42" src="https://github.com/user-attachments/assets/5cf09749-6454-4dcd-8a78-7fce84d423e4" />
 Ky dataset përmban gjithsej 10,000 vëzhgime (rreshta) dhe 14 variabla (kolona). Ai është plotësisht i pastër – nuk ka asnjë qelizë të dhënash të munguar (0% të dhëna të humbura) dhe as rreshta të dyfishuar. Kjo e bën dataset-in ideal për trajnimin e modeleve të makinerisë pa pasur nevojë për pastrim paraprak të të dhënave.
@@ -989,7 +1002,6 @@ Joblib është një librari Python e optimizuar për serializimin e objekteve t�
 Modelet në projet mund të gjenden në folder-in: `models` dhe në algoritmin specifik si elliptic envelope, isolation forest, one class svm dhe local outlier factor.
 
 <img width="339" height="380" alt="Screenshot 2026-05-13 at 20 35 43" src="https://github.com/user-attachments/assets/cb3c9aa7-0c86-45f9-8eb2-a8e348873746" />
-
 
 
 
