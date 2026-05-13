@@ -895,7 +895,7 @@ Interpretimi:
 Keto rezultate tregojne dy strategji te ndryshme: Elliptic Envelope jep me pak
 alarme te rreme, ndersa One-Class SVM kap pothuajse te gjitha anomalite.
 
-### 8.4 Si lexohen rezultatet
+### 8.4 Rezultatet
 
 Ne kete projekt klasa `forbid` trajtohet si sjellje me e dyshimte ose me e
 pazakonte, ndersa `allow` si sjellje normale.
@@ -940,26 +940,20 @@ modeleve. Ai regjistron:
 - emrin e eksperimentit dhe `run_id`, që e bëjnë më të lehtë krahasimin e
   disa trajnimeve.
 
-Në praktikë, kjo ndihmon kur krahasohen variante të ndryshme të Isolation
+Kjo ndihmon kur krahasohen variante të ndryshme të Isolation
 Forest ose kur ruhet një model i mirë për përdorim të mëvonshëm.
 
-Nëse dëshiron ta shohësh në kod, përdorimi kryesor është në
-`rainfall_ml_tools.py`, ku MLflow hap një run, logon parametrat dhe metrikat,
+Përdorimi kryesor është në `rainfall_ml_tools.py`, ku MLflow hap një run, logon parametrat dhe metrikat,
 dhe ruan modelin e trajnuar me `mlflow.sklearn.log_model(...)`.
 
 <img width="644" height="405" alt="Screenshot 2026-05-13 at 21 00 08" src="https://github.com/user-attachments/assets/7877f86d-11a0-4814-b606-03959121d5f7" />
 
 
-<img width="1222" height="452" alt="Screenshot 2026-05-13 at 20 17 42" src="https://github.com/user-attachments/assets/5cf09749-6454-4dcd-8a78-7fce84d423e4" />
-Ky dataset përmban gjithsej 10,000 vëzhgime (rreshta) dhe 14 variabla (kolona). Ai është plotësisht i pastër – nuk ka asnjë qelizë të dhënash të munguar (0% të dhëna të humbura) dhe as rreshta të dyfishuar. Kjo e bën dataset-in ideal për trajnimin e modeleve të makinerisë pa pasur nevojë për pastrim paraprak të të dhënave.
-
-Nga 14 variablat, 6 prej tyre janë të tipit kategorik (p.sh. emra, etiketa, vlera tekstuale), ndërsa 8 variablat e tjerë janë numerikë (të plotë ose dhjetorë). Kjo përzierje e llojeve të variablave e bën dataset-in të përshtatshëm për probleme të ndryshme të mësimit të makinerive, duke përfshirë klasifikimin, regresionin dhe analizën e anomalive.
-
 Madhësia totale e dataset-it në memorie është rreth 1.1 MiB, ndërsa çdo vëzhgim mesatarisht zë 112 bytes. 
 
 <img width="1189" height="471" alt="Screenshot 2026-05-13 at 20 20 39" src="https://github.com/user-attachments/assets/da87b01e-e89c-46a8-b9cd-892a23a1c428" />
 
-Tipari protoPayload.methodName__le nuk ka asnjë vlerë të munguar – të gjitha 10,000 rreshtat janë të plotësuar me vlera reale nga 0 deri në 15. Ai përmban vetëm 16 vlera të dallueshme, gjë që tregon se është një tipar me përsëritje të lartë. Mesatarja e tij është 4.16, ndërsa 7.9% e vlerave janë zero.
+Tipari protoPayload.methodName__le është me vlera reale nga 0 deri në 15. Ai përmban vetëm 16 vlera të dallueshme, gjë që tregon se është një tipar me përsëritje të lartë. Mesatarja e tij është 4.16, ndërsa 7.9% e vlerave janë zero.
 
 Grafiku i shpërndarjes (histogrami) për këtë tipar do të tregonte frekuencën e secilës vlerë të plotë nga 0 deri në 15. Duke qenë se vlerat janë diskrete dhe me pak variacione, grafiku më i përshtatshëm është një bar chart. Në të do të vërehej një shtyllë e lartë për vlerën 0 (786 raste), ndërsa vlerat e tjera do të kishin lartësi të ndryshme, duke formuar një shpërndarje jo uniforme.
 
