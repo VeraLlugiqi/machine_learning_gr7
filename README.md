@@ -955,22 +955,34 @@ Perdorimi i ketyre veglave e ben projektin me te qarte per analizim dhe me te
 lehte per riprodhim, sepse rezultatet lidhen me parametrat, dataset-in dhe
 modelin perkates.
 
-## Kujt i ndihmojne rezultatet dhe si
 
-Rezultatet e kesaj faze jane te dobishme per:
+### MLFlow
 
-- ekipet e sigurise, sepse mund te sinjalizojne aktivitete te pazakonta ne audit logs;
-- administratoren e sistemeve cloud/Kubernetes, sepse ndihmojne te kuptohet cilat evente devijojne nga sjellja normale;
-- ekipet e DevOps, sepse mund te perdorin anomalite si pike nisjeje per hetim;
-- klientin, sepse merr nje model me te maturuar dhe rezultate me te shpjegueshme.
+MLflow është një mjet që përdoret për të menaxhuar dhe ndjekur procesin e zhvillimit të modeleve të machine learning. Ai përdoret për vizualizimin e rezultateve, duke treguar metrika si accuracy dhe F1-score në një ndërfaqe grafike, si dhe për krahasimin e eksperimenteve të ndryshme. Përveç kësaj, MLflow ruan parametrat dhe modelet, duke e bërë më të lehtë analizimin, organizimin dhe përzgjedhjen e modelit më të mirë.
 
-Pas aplikimit te fazes se trete arritem te paraqesim se modeli nuk eshte vetem
-i trajnuar, por edhe i optimizuar dhe i krahasuar me versionin paraprak. Kjo e
-ben projektin me afer nje zgjidhjeje praktike per monitorim dhe detektim te
-rreziqeve ne sistem.
+<img width="1222" height="452" alt="Screenshot 2026-05-13 at 20 17 42" src="https://github.com/user-attachments/assets/5cf09749-6454-4dcd-8a78-7fce84d423e4" />
+Ky dataset përmban gjithsej 10,000 vëzhgime (rreshta) dhe 14 variabla (kolona). Ai është plotësisht i pastër – nuk ka asnjë qelizë të dhënash të munguar (0% të dhëna të humbura) dhe as rreshta të dyfishuar. Kjo e bën dataset-in ideal për trajnimin e modeleve të makinerisë pa pasur nevojë për pastrim paraprak të të dhënave.
+
+Nga 14 variablat, 6 prej tyre janë të tipit kategorik (p.sh. emra, etiketa, vlera tekstuale), ndërsa 8 variablat e tjerë janë numerikë (të plotë ose dhjetorë). Kjo përzierje e llojeve të variablave e bën dataset-in të përshtatshëm për probleme të ndryshme të mësimit të makinerive, duke përfshirë klasifikimin, regresionin dhe analizën e anomalive.
+
+Madhësia totale e dataset-it në memorie është rreth 1.1 MiB, ndërsa çdo vëzhgim mesatarisht zë 112 bytes. 
+
+<img width="1189" height="471" alt="Screenshot 2026-05-13 at 20 20 39" src="https://github.com/user-attachments/assets/da87b01e-e89c-46a8-b9cd-892a23a1c428" />
+
+Tipari protoPayload.methodName__le nuk ka asnjë vlerë të munguar – të gjitha 10,000 rreshtat janë të plotësuar me vlera reale nga 0 deri në 15. Ai përmban vetëm 16 vlera të dallueshme, gjë që tregon se është një tipar me përsëritje të lartë. Mesatarja e tij është 4.16, ndërsa 7.9% e vlerave janë zero.
+
+Grafiku i shpërndarjes (histogrami) për këtë tipar do të tregonte frekuencën e secilës vlerë të plotë nga 0 deri në 15. Duke qenë se vlerat janë diskrete dhe me pak variacione, grafiku më i përshtatshëm është një bar chart. Në të do të vërehej një shtyllë e lartë për vlerën 0 (786 raste), ndërsa vlerat e tjera do të kishin lartësi të ndryshme, duke formuar një shpërndarje jo uniforme.
+
+<img width="1109" height="668" alt="Screenshot 2026-05-13 at 20 22 39" src="https://github.com/user-attachments/assets/c6fe8313-729a-42d6-8fcb-aebce5202d99" />
+
+Ky grafik tregon marrëdhënien midis dy tipareve kryesore: timestamp_epoch_s (në boshtin horizontal) dhe timestamp_delay_s (në boshtin vertikal). Pikat e dhëna në boshtin horizontal janë afërsisht nga 1.71 deri në 1.77 – ka të ngjarë që këto të jenë vlera të shkallëzuara ose të normalizuara të kohës (p.sh. në sekonda pjesëtuar me një faktor), sepse vlerat origjinale të timestamp_epoch_s zakonisht janë numra të mëdhenj (si 1.7 miliardë). Boshti vertikal tregon timestamp_delay_s nga 0 deri në 300, që mund të jetë vonesa në sekonda.
+
+<img width="1084" height="607" alt="Screenshot 2026-05-13 at 20 23 36" src="https://github.com/user-attachments/assets/9ab0d302-395e-4e35-bb3f-0ae9a358f686" />
+
+Figura paraqet analizën e korrelacioneve midis 13 variablave kryesore të dataset-it. Në të përdoren disa metrika të ndryshme për matjen e lidhjes midis çifteve të tipareve Pearson's. Në anën e djathtë shfaqet një shirit ngjyrash që tregon fuqinë e korrelacionit: nga 1.00 (e kuqe e errët) për korrelacion të lartë pozitiv, në 0.00 (e bardhë) për pa korrelacion, e deri në -1.00 (e kaltër e errët) për korrelacion të lartë negativ.
+Nëpërmjet hartës së nxehtësisë (heatmap) mund të identifikohen vizualisht çiftet e tipareve që janë shumë të lidhura pozitivisht (p.sh. me ngjyrë të kuqe) ose negativisht (me ngjyrë blu). Kjo ndihmon për të zbuluar varësi të panevojshme ndërmjet tipareve (multikolinearitet) dhe për të zgjedhur cilët tipare janë më të rëndësishëm për modelin.
 
 
 
-Konkluzioni kryesor eshte se faza 3 e rriti performancen e modeleve duke i
-optimizuar te gjitha algoritmet e fazes 2. Modeli me i mire sipas F1-score doli
-**Elliptic Envelope i optimizuar** me `F1-score = 0.8283`, ndersa **One-Class SVM i optimizuar** mbeti shume i forte per kapjen e anomalive me `recall = 0.9815`.
+
+
