@@ -300,6 +300,7 @@ Në këtë fazë janë të implementuara **katër** modele për anomaly detectio
 3. **One-Class SVM**
 4. **Elliptic Envelope**
 
+
 #### Struktura e skedarëve (Faza 2)
 
 ```text
@@ -307,6 +308,8 @@ anomaly_models/
 ├── __init__.py
 ├── common.py                 # ngarkim ml_ready, validim — përbashkët për të gjitha modelet
 ├── isolation_forest.py       # trajnim + CLI për Isolation Forest
+├── isolation_forest_lime.py  # LIME për Isolation Forest
+├── isolation_forest_viz.py   # dashboard interaktiv për Isolation Forest
 ├── local_outlier_factor.py   # trajnim + CLI për Local Outlier Factor
 ├── one_class_svm.py          # trajnim + CLI për One-Class SVM
 └── elliptic_envelope.py      # trajnim + CLI për Elliptic Envelope
@@ -925,6 +928,28 @@ Ne projekt jane perdorur keto vegla dhe biblioteka:
 | `ydata-profiling` | raportim eksplorues | Gjenerim i raportit HTML per EDA |
 | `MLflow` | gjurmim eksperimenti | Ruajtja e parametrave, metrikave dhe modelit |
 | `RandomForestClassifier` | modelim i mbikqyrur | Eksperimente krahasuese kur target-i eshte i qarte |
+
+
+Për interpretim lokal të Isolation Forest është shtuar edhe një integrim me
+**LIME**. Përdorimi bazë është:
+
+```bash
+python -m anomaly_models.isolation_forest_lime --anomaly-only
+```
+
+Ose për një rresht specifik:
+
+```bash
+python -m anomaly_models.isolation_forest_lime --row-index 123
+```
+
+Për vizualizim interaktiv të rezultateve të Isolation Forest është shtuar edhe
+**Plotly**. Kjo gjeneron një dashboard HTML me shpërndarjen e decision score,
+PCA projection dhe numrin e anomalive:
+
+```bash
+python -m anomaly_models.isolation_forest_viz
+```
 
 Perdorimi i ketyre veglave e ben projektin me te qarte per analizim dhe me te
 lehte per riprodhim, sepse rezultatet lidhen me parametrat, dataset-in dhe
