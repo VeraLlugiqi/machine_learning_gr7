@@ -1,0 +1,23 @@
+artifact_path: /Users/leotrimhalimi/Developer/Personal/fiek-s2/machine_learning_gr7/mlruns/1/models/m-ee17b7a732d041fabc36733b4cfe6f2c/artifacts
+flavors:
+  python_function:
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.sklearn
+    model_path: model.pkl
+    predict_fn: predict
+    python_version: 3.11.14
+  sklearn:
+    code: null
+    pickled_model: model.pkl
+    serialization_format: cloudpickle
+    sklearn_version: 1.8.0
+    skops_trusted_types: null
+mlflow_version: 3.12.0
+model_id: m-ee17b7a732d041fabc36733b4cfe6f2c
+model_size_bytes: 1883768
+model_uuid: m-ee17b7a732d041fabc36733b4cfe6f2c
+prompts: null
+run_id: b79ceecaf39d42eab2d86820cf10e3d2
+utc_time_created: '2026-05-13 18:15:20.815329'

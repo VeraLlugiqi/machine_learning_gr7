@@ -1,20 +1,18 @@
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from typing import Any, Dict, Optional
 
+import mlflow
+import mlflow.sklearn
 import pandas as pd
+from sklearn.ensemble import IsolationForest
+from sklearn.metrics import accuracy_score, f1_score
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
 
-
-def _import_mlflow():
-    try:
-        import mlflow
-        import mlflow.sklearn
-    except ModuleNotFoundError as exc:
-        raise ModuleNotFoundError(
-            "Missing dependency: mlflow. Install it with `pip install mlflow`."
-        ) from exc
-    return mlflow
+from anomaly_models.common import TARGET_COL, project_root
 
 
 def _import_profile_report():
@@ -28,50 +26,24 @@ def _import_profile_report():
     return ProfileReport
 
 
-def _import_random_forest_and_metrics():
-    try:
-        from sklearn.ensemble import RandomForestClassifier
-        from sklearn.metrics import accuracy_score, f1_score
-    except ModuleNotFoundError as exc:
-        raise ModuleNotFoundError(
-            "Missing dependency: scikit-learn. Install it with "
-            "`pip install scikit-learn`."
-        ) from exc
-    return RandomForestClassifier, accuracy_score, f1_score
-
-
-def _import_train_test_split():
-    try:
-        from sklearn.model_selection import train_test_split
-    except ModuleNotFoundError as exc:
-        raise ModuleNotFoundError(
-            "Missing dependency: scikit-learn. Install it with "
-            "`pip install scikit-learn`."
-        ) from exc
-    return train_test_split
-
-
 @dataclass(frozen=True)
-class RandomForestConfig:
-    n_estimators: int = 200
-    max_depth: Optional[int] = 12
+class Config:
+    n_estimators: int = 100
+    contamination: float = 0.05
     random_state: int = 42
-    min_samples_split: int = 2
-    min_samples_leaf: int = 1
-    class_weight: Optional[str] = None
+    test_size: float = 0.2
+    anomaly_label: int = 1
+    report_file: str = "rainfall_report.html"
 
 
-def generate_rainfall_profile_report(
+def generate_rainfall_report(
     df: pd.DataFrame,
     output_file: str = "rainfall_report.html",
 ) -> str:
-    """
-    Generate a full ydata_profiling HTML report for exploratory data analysis.
-    """
     ProfileReport = _import_profile_report()
     report = ProfileReport(
         df,
-        title="Rainfall Dataset EDA Report",
+        title="Rainfall Report",
         explorative=True,
         minimal=False,
         progress_bar=False,
@@ -93,79 +65,67 @@ def generate_rainfall_profile_report(
     return output_file
 
 
-def _resolve_average_for_f1(y_true: pd.Series) -> str:
-    # Weighted keeps the score valid for binary and multi-class targets alike.
-    return "weighted"
+def _to_binary_anomaly(y: pd.Series, anomaly_label: int = 1) -> pd.Series:
+    return (y == anomaly_label).astype(int)
 
 
-def train_and_log_random_forest(
+def train_and_log(
     X_train: pd.DataFrame,
     X_test: pd.DataFrame,
-    y_train: pd.Series,
-    y_test: pd.Series,
-    *,
-    config: RandomForestConfig = RandomForestConfig(),
+    y_test: Optional[pd.Series],
+    config: Config,
     experiment_name: str = "rainfall",
-    run_name: str = "random_forest",
-    model_artifact_path: str = "model",
-    tracking_uri: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """
-    Train a RandomForest model, log params/metrics/model to MLflow, and return
-    the fitted model plus evaluation results.
-    """
-    mlflow = _import_mlflow()
-    RandomForestClassifier, accuracy_score, f1_score = _import_random_forest_and_metrics()
-
-    if tracking_uri:
-        mlflow.set_tracking_uri(tracking_uri)
-
     mlflow.set_experiment(experiment_name)
 
-    model = RandomForestClassifier(
-        n_estimators=config.n_estimators,
-        max_depth=config.max_depth,
-        random_state=config.random_state,
-        min_samples_split=config.min_samples_split,
-        min_samples_leaf=config.min_samples_leaf,
-        class_weight=config.class_weight,
-        n_jobs=-1,
-    )
+    scaler = StandardScaler()
+    X_train_scaled = scaler.fit_transform(X_train)
+    X_test_scaled = scaler.transform(X_test)
 
-    with mlflow.start_run(run_name=run_name):
-        model.fit(X_train, y_train)
-        y_pred = model.predict(X_test)
+    with mlflow.start_run():
+        model = IsolationForest(
+            n_estimators=config.n_estimators,
+            contamination=config.contamination,
+            random_state=config.random_state,
+            n_jobs=-1,
+        )
 
-        accuracy = accuracy_score(y_test, y_pred)
-        f1 = f1_score(y_test, y_pred, average=_resolve_average_for_f1(y_test))
+        model.fit(X_train_scaled)
+        y_pred = model.predict(X_test_scaled)
+        y_pred_binary = (y_pred == -1).astype(int)
+
+        accuracy = None
+        f1 = None
+        if y_test is not None:
+            y_true_binary = _to_binary_anomaly(y_test, config.anomaly_label)
+            accuracy = accuracy_score(y_true_binary, y_pred_binary)
+            f1 = f1_score(y_true_binary, y_pred_binary, average="weighted")
+            mlflow.log_metrics(
+                {
+                    "accuracy": accuracy,
+                    "f1_score": f1,
+                }
+            )
 
         mlflow.log_params(
             {
-                "model_type": "RandomForestClassifier",
-                "n_estimators": str(config.n_estimators),
-                "max_depth": str(config.max_depth),
-                "random_state": str(config.random_state),
-                "min_samples_split": str(config.min_samples_split),
-                "min_samples_leaf": str(config.min_samples_leaf),
-                "class_weight": str(config.class_weight),
-                "train_rows": str(len(X_train)),
-                "test_rows": str(len(X_test)),
-                "n_features": str(X_train.shape[1]),
+                "model_type": "IsolationForest",
+                "n_estimators": config.n_estimators,
+                "contamination": config.contamination,
+                "random_state": config.random_state,
+                "test_size": config.test_size,
+                "anomaly_label": config.anomaly_label,
+                "train_rows": len(X_train),
+                "test_rows": len(X_test),
+                "n_features": X_train.shape[1],
             }
         )
-        mlflow.log_metrics(
-            {
-                "accuracy": accuracy,
-                "f1_score": f1,
-            }
-        )
-        mlflow.sklearn.log_model(
-            model,
-            artifact_path=model_artifact_path,
-        )
+
+        mlflow.sklearn.log_model(model, "model")
 
         return {
             "model": model,
+            "scaler": scaler,
             "y_pred": y_pred,
             "accuracy": accuracy,
             "f1_score": f1,
@@ -181,27 +141,16 @@ def run_rainfall_eda_and_tracking(
     y_test: pd.Series,
     *,
     report_file: str = "rainfall_report.html",
-    config: RandomForestConfig = RandomForestConfig(),
+    config: Config = Config(),
     experiment_name: str = "rainfall",
-    run_name: str = "random_forest",
-    model_artifact_path: str = "model",
-    tracking_uri: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """
-    Convenience wrapper that generates the profiling report and then runs MLflow
-    tracking for a RandomForest baseline.
-    """
-    report_path = generate_rainfall_profile_report(df, output_file=report_file)
-    results = train_and_log_random_forest(
+    report_path = generate_rainfall_report(df, output_file=report_file)
+    results = train_and_log(
         X_train,
         X_test,
-        y_train,
         y_test,
         config=config,
         experiment_name=experiment_name,
-        run_name=run_name,
-        model_artifact_path=model_artifact_path,
-        tracking_uri=tracking_uri,
     )
     results["report_path"] = report_path
     return results
@@ -209,45 +158,58 @@ def run_rainfall_eda_and_tracking(
 
 def run_rainfall_from_csv(
     csv_path: str,
-    target_column: str,
+    target_column: Optional[str] = TARGET_COL,
     *,
-    report_file: str = "rainfall_report.html",
+    report_file: Optional[str] = None,
     test_size: float = 0.2,
     random_state: int = 42,
-    config: RandomForestConfig = RandomForestConfig(),
+    config: Config = Config(),
     experiment_name: str = "rainfall",
-    run_name: str = "random_forest",
-    model_artifact_path: str = "model",
-    tracking_uri: Optional[str] = None,
 ) -> Dict[str, Any]:
-    train_test_split = _import_train_test_split()
     df = pd.read_csv(csv_path, low_memory=False)
-    if target_column not in df.columns:
+    if target_column and target_column not in df.columns:
         raise ValueError(
             f"Target column {target_column!r} was not found in {csv_path!r}."
         )
 
-    y = df[target_column]
-    X = df.drop(columns=[target_column])
-    X_train, X_test, y_train, y_test = train_test_split(
-        X,
-        y,
-        test_size=test_size,
-        random_state=random_state,
-        stratify=y if y.nunique() > 1 else None,
+    if target_column:
+        y = df[target_column]
+        X = df.drop(columns=[target_column])
+    else:
+        y = None
+        X = df
+
+    if y is not None:
+        X_train, X_test, y_train, y_test = train_test_split(
+            X,
+            y,
+            test_size=test_size,
+            random_state=random_state,
+            stratify=y if y.nunique() > 1 else None,
+        )
+    else:
+        X_train, X_test = train_test_split(
+            X,
+            test_size=test_size,
+            random_state=random_state,
+        )
+        y_train = pd.Series(dtype="int64")
+        y_test = None
+
+    resolved_report_file = report_file or os.path.join(
+        project_root(),
+        "rainfall_report.html",
     )
+
     return run_rainfall_eda_and_tracking(
         df,
         X_train,
         X_test,
         y_train,
         y_test,
-        report_file=report_file,
+        report_file=resolved_report_file,
         config=config,
         experiment_name=experiment_name,
-        run_name=run_name,
-        model_artifact_path=model_artifact_path,
-        tracking_uri=tracking_uri,
     )
 
 
@@ -256,7 +218,7 @@ if __name__ == "__main__":
     import os
 
     parser = argparse.ArgumentParser(
-        description="Generate a rainfall EDA report and log a RandomForest MLflow run."
+        description="Generate a rainfall report and log an Isolation Forest MLflow run."
     )
     parser.add_argument(
         "csv",
@@ -266,27 +228,27 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--target-column",
-        default="labels.authorization.k8s.io/decision__le",
+        default=TARGET_COL,
         help="Name of the target column in the CSV.",
     )
     parser.add_argument(
         "--report-file",
-        default="rainfall_report.html",
-        help="Output HTML report path.",
+        default=None,
+        help="Output HTML report path. Defaults to ./rainfall_report.html",
     )
     parser.add_argument("--test-size", type=float, default=0.2)
     parser.add_argument("--random-state", type=int, default=42)
-    parser.add_argument("--n-estimators", type=int, default=200)
-    parser.add_argument("--max-depth", type=int, default=12)
+    parser.add_argument("--n-estimators", type=int, default=100)
+    parser.add_argument("--contamination", type=float, default=0.05)
     parser.add_argument("--experiment-name", default="rainfall")
-    parser.add_argument("--run-name", default="random_forest")
-    parser.add_argument("--tracking-uri", default=None)
     args = parser.parse_args()
 
-    config = RandomForestConfig(
+    config = Config(
         n_estimators=args.n_estimators,
-        max_depth=args.max_depth,
+        contamination=args.contamination,
         random_state=args.random_state,
+        test_size=args.test_size,
+        report_file=args.report_file or "rainfall_report.html",
     )
     results = run_rainfall_from_csv(
         args.csv,
@@ -296,10 +258,8 @@ if __name__ == "__main__":
         random_state=args.random_state,
         config=config,
         experiment_name=args.experiment_name,
-        run_name=args.run_name,
-        tracking_uri=args.tracking_uri,
     )
     print(f"Report saved to: {results['report_path']}")
     print(f"MLflow run_id: {results['run_id']}")
-    print(f"Accuracy: {results['accuracy']:.4f}")
-    print(f"F1-score: {results['f1_score']:.4f}")
+    print(f"Accuracy: {results['accuracy']:.4f}" if results["accuracy"] is not None else "Accuracy: n/a")
+    print(f"F1-score: {results['f1_score']:.4f}" if results["f1_score"] is not None else "F1-score: n/a")
