@@ -982,6 +982,13 @@ Ky grafik tregon marrëdhënien midis dy tipareve kryesore: timestamp_epoch_s (n
 Figura paraqet analizën e korrelacioneve midis 13 variablave kryesore të dataset-it. Në të përdoren disa metrika të ndryshme për matjen e lidhjes midis çifteve të tipareve Pearson's. Në anën e djathtë shfaqet një shirit ngjyrash që tregon fuqinë e korrelacionit: nga 1.00 (e kuqe e errët) për korrelacion të lartë pozitiv, në 0.00 (e bardhë) për pa korrelacion, e deri në -1.00 (e kaltër e errët) për korrelacion të lartë negativ.
 Nëpërmjet hartës së nxehtësisë (heatmap) mund të identifikohen vizualisht çiftet e tipareve që janë shumë të lidhura pozitivisht (p.sh. me ngjyrë të kuqe) ose negativisht (me ngjyrë blu). Kjo ndihmon për të zbuluar varësi të panevojshme ndërmjet tipareve (multikolinearitet) dhe për të zgjedhur cilët tipare janë më të rëndësishëm për modelin.
 
+### JOBLIB
+
+Joblib është një librari Python e optimizuar për serializimin e objekteve të mëdha numpy/të dhëna, e përdorur zakonisht për të ruajtur modele të trajnuara në disk dhe për t'i ngarkuar ato më vonë pa pasur nevojë të ritrajnohen.
+
+Modelet në projet mund të gjenden në folder-in: `models` dhe në algoritmin specifik si elliptic envelope, isolation forest, one class svm dhe local outlier factor.
+
+<img width="339" height="380" alt="Screenshot 2026-05-13 at 20 35 43" src="https://github.com/user-attachments/assets/cb3c9aa7-0c86-45f9-8eb2-a8e348873746" />
 
 
 
